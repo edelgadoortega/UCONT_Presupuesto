@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Previsión Presupuestaria y Canje por Certificación</title>
+  <style>
+    :root {
+      --blue:#1d4ed8; --blue-dark:#1e3a8a; --blue-soft:#dbeafe;
+      --teal:#0f766e; --teal-soft:#ccfbf1;
+      --green:#15803d; --green-soft:#dcfce7;
+      --yellow:#a16207; --yellow-soft:#fef3c7;
+      --red:#b91c1c; --red-soft:#fee2e2;
+      --gray:#64748b; --gray-soft:#f1f5f9;
+      --ink:#0f172a; --border:#dbe3ef;
+      --shadow:0 18px 45px rgba(15,23,42,.12); --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef4ff;color:var(--ink)}
+    header{background:linear-gradient(135deg,#12326f,var(--blue));color:#fff;padding:28px 20px;text-align:center}
+    header h1{margin:0;font-size:clamp(1.55rem,3vw,2.55rem);letter-spacing:0}
+    header p{margin:10px auto 0;max-width:960px;line-height:1.5;opacity:.96}
+    main{width:min(1240px,calc(100% - 32px));margin:24px auto 48px}
+    h2,h3{margin-top:0;letter-spacing:0}
+    .screen{display:none;animation:fadeIn .25s ease}.screen.active{display:block}
+    .panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+    .small{color:#475569;font-size:.95rem;line-height:1.55}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.col-8{grid-column:span 8}.col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-12{grid-column:span 12}
+    @media(max-width:900px){.col-8,.col-6,.col-4{grid-column:span 12}}
+    .case-picker{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px}
+    @media(max-width:760px){.case-picker{grid-template-columns:1fr}}
+    .case-card{border:1px solid var(--border);background:#f8fafc;border-radius:14px;padding:16px;min-height:220px}
+    .case-card strong{display:block;color:var(--blue-dark);font-size:1.15rem;margin-bottom:8px}
+    .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    button{border:0;border-radius:12px;padding:12px 16px;font-size:1rem;font-weight:900;cursor:pointer;transition:transform .15s ease,opacity .15s ease}
+    button:hover{transform:translateY(-1px)}button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .btn-primary{background:var(--blue);color:#fff}.btn-secondary{background:#e2e8f0;color:var(--ink)}.btn-success{background:var(--green);color:#fff}
+    .topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#e0f2fe;color:#075985;font-weight:900;font-size:.84rem;margin:3px}
+    .score{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;background:#eff6ff;color:var(--blue-dark);border:1px solid #bfdbfe;font-weight:900}
+    .progress{height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:10px 0 16px}.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width .3s ease}
+    .lanes{display:grid;gap:14px;margin-top:14px}
+    .lane{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff}
+    .lane-title{padding:10px 14px;color:#fff;font-weight:900}.lane.t .lane-title{background:var(--blue)}.lane.t1 .lane-title{background:var(--teal)}
+    .lane-flow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(145px,1fr);gap:8px;align-items:stretch;overflow-x:auto;padding:12px}
+    .step-wrap{display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center}.step-wrap:last-child{grid-template-columns:1fr}
+    .step{min-height:110px;border:2px solid #cbd5e1;background:#f8fafc;border-radius:13px;padding:12px;transition:background .2s ease,border-color .2s ease,transform .2s ease}
+    .step strong{display:block;margin-bottom:6px}.step span{display:block;color:#475569;font-size:.86rem;line-height:1.35}
+    .step.pending{background:#f8fafc;border-color:#cbd5e1}.step.current-t{background:var(--blue-soft);border-color:var(--blue);transform:translateY(-2px)}
+    .step.current-t1{background:var(--teal-soft);border-color:var(--teal);transform:translateY(-2px)}.step.done{background:var(--green-soft);border-color:#22c55e}
+    .step.warn{background:var(--yellow-soft);border-color:#f59e0b}.step.bad{background:var(--red-soft);border-color:#ef4444}
+    .arrow{align-self:center;color:var(--blue);font-weight:900;font-size:1.35rem;text-align:center;animation:pulseArrow 1.2s ease-in-out infinite}
+    .t1 .arrow{color:var(--teal)}
+    .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+    @media(max-width:1050px){.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:650px){.metrics{grid-template-columns:1fr}}
+    .metric{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px;min-height:82px}
+    .metric span{display:block;color:var(--gray);font-size:.82rem;font-weight:800;margin-bottom:5px}.metric strong{display:block;color:var(--blue-dark);font-size:1.02rem}
+    .case-box{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:14px;padding:16px}
+    .options{display:grid;gap:10px;margin-top:14px}.option{width:100%;text-align:left;border:1px solid #cbd5e1;background:#fff;color:var(--ink);border-radius:12px;padding:14px 16px;line-height:1.35}
+    .option:hover{border-color:var(--blue);background:#eff6ff}.option.correct{background:var(--green-soft);color:#14532d;border-color:#22c55e}.option.incorrect{background:var(--red-soft);color:#7f1d1d;border-color:#ef4444}
+    .feedback{display:none;border-radius:14px;padding:16px;margin-top:16px;line-height:1.55;animation:fadeIn .2s ease}.feedback.show{display:block}.feedback.ok{background:var(--green-soft);border:1px solid #86efac;color:#14532d}.feedback.bad{background:var(--red-soft);border:1px solid #fecaca;color:#7f1d1d}
+    .norm-list{margin:0;padding-left:20px;line-height:1.6}.summary-table{width:100%;border-collapse:collapse;margin-top:12px}.summary-table th,.summary-table td{border-bottom:1px solid #e2e8f0;padding:11px;text-align:left;vertical-align:top}.summary-table th{background:#eff6ff;color:var(--blue-dark)}
+    .conclusion{background:#f8fafc;border-left:5px solid var(--teal);border-radius:12px;padding:16px;line-height:1.55}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes pulseArrow{0%,100%{opacity:.45;transform:translateX(0)}50%{opacity:1;transform:translateX(3px)}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulador de Previsión Presupuestaria y Canje por Certificación</h1>
+    <p>Ejecuciones contractuales que superan el año fiscal y procedimientos convocados al cierre del año</p>
+  </header>
+  <main>
+    <section id="startScreen" class="screen active">
+      <div class="panel">
+        <h2>Selecciona un caso</h2>
+        <p class="small">Practica cuándo corresponde emitir CCP, cuándo corresponde previsión presupuestaria y cómo se realiza el canje por certificación en el año fiscal siguiente.</p>
+        <div class="case-picker">
+          <div class="case-card">
+            <strong>Caso A: Servicio multianual</strong>
+            <p class="small">Servicio de mantenimiento integral de estaciones geofísicas que se ejecuta de noviembre de 2026 a abril de 2027.</p>
+            <p class="small"><b>Total:</b> S/ 720,000<br><b>2026:</b> S/ 270,000<br><b>2027:</b> S/ 450,000</p>
+            <button class="btn-primary" onclick="selectCase('A')">Iniciar Caso A</button>
+          </div>
+          <div class="case-card">
+            <strong>Caso B: Convocatoria al cierre del año</strong>
+            <p class="small">Adquisición de sensores sísmicos convocada en noviembre de 2026, con buena pro y contrato en enero de 2027.</p>
+            <p class="small"><b>Total:</b> S/ 580,000<br><b>2026:</b> S/ 0<br><b>2027:</b> S/ 580,000</p>
+            <button class="btn-primary" onclick="selectCase('B')">Iniciar Caso B</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Recordatorio normativo</h2>
+        <ul class="norm-list small">
+          <li>La certificación del crédito presupuestario garantiza crédito disponible y libre de afectación para comprometer gasto con cargo al presupuesto del año fiscal respectivo, en función a la PCA.</li>
+          <li>La certificación es requisito indispensable antes de realizar gasto, suscribir contrato o adquirir compromiso, y se adjunta al expediente.</li>
+          <li>Si la ejecución contractual supera el año fiscal, además del CCP del año en curso, debe emitirse previsión presupuestaria para años subsiguientes.</li>
+          <li>Si el procedimiento se convoca en el último trimestre y la buena pro y contrato serán en el año siguiente, la previsión se otorga antes de la convocatoria.</li>
+          <li>Durante los primeros treinta días hábiles de los años fiscales subsiguientes debe emitirse el CCP respecto de la previsión emitida.</li>
+          <li>Registrado el contrato en SEACE, corresponde registrar el compromiso anual por el monto del contrato correspondiente al año fiscal.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="simScreen" class="screen">
+      <div class="panel">
+        <div class="topline">
+          <div><span class="badge" id="caseBadge">Caso</span><span class="badge" id="stageBadge">Etapa 1 de 6</span></div>
+          <div class="score">Puntaje: <span id="scoreText">0</span>/6</div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div class="lanes">
+          <div class="lane t"><div class="lane-title">Año 2026 = t</div><div class="lane-flow" id="laneT"></div></div>
+          <div class="lane t1"><div class="lane-title">Año 2027 = t+1</div><div class="lane-flow" id="laneT1"></div></div>
+        </div>
+        <div class="metrics" id="metrics"></div>
+      </div>
+      <div class="panel">
+        <div class="grid">
+          <div class="col-8">
+            <div class="case-box">
+              <h2 id="stageTitle">Etapa</h2>
+              <p id="narrative" class="small"></p>
+              <h3 id="question"></h3>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="case-box">
+              <h3>Idea clave</h3>
+              <p class="small" id="keyText"></p>
+            </div>
+          </div>
+        </div>
+        <div id="optionsBox" class="options"></div>
+        <div id="feedbackBox" class="feedback" aria-live="polite"></div>
+        <div class="btn-row">
+          <button id="nextButton" class="btn-success" onclick="nextStage()" disabled>Siguiente paso</button>
+          <button class="btn-secondary" onclick="showScreen('startScreen')">Cambiar de caso</button>
+          <button class="btn-secondary" onclick="resetCurrentCase()">Reiniciar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="panel">
+        <h2>Resultado del estudiante</h2>
+        <p class="score">Puntaje obtenido: <span id="finalScore">0</span>/6</p>
+        <p class="small" id="finalPercent"></p>
+        <p class="small" id="performanceText"></p>
+      </div>
+      <div class="panel">
+        <h2>Tabla resumen del caso</h2>
+        <table class="summary-table">
+          <thead><tr><th>Fase</th><th>Año</th><th>Documento / acción</th><th>Monto</th></tr></thead>
+          <tbody id="summaryRows"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Conclusión pedagógica</h2>
+        <div class="conclusion">La previsión presupuestaria permite respaldar obligaciones que afectarán años fiscales subsiguientes, pero no sustituye la certificación del crédito presupuestario del año siguiente. En el año t+1, la entidad debe canjear la previsión por el CCP correspondiente dentro del plazo normativo y recién con ello registrar el compromiso anual que corresponda al ejercicio fiscal.</div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="showScreen('startScreen')">Cambiar de caso</button>
+          <button class="btn-secondary" onclick="resetCurrentCase()">Reiniciar caso</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const cases = {
+      A: {
+        name: "Caso A: Servicio multianual",
+        key: "El CCP respalda el año fiscal en curso; la previsión respalda el año subsiguiente y debe canjearse por CCP en t+1.",
+        metrics: [
+          ["Valor estimado", "S/ 720,000"], ["CCP año t", "S/ 270,000"], ["Previsión año t+1", "S/ 450,000"],
+          ["Contratación", "S/ 720,000"], ["Compromiso año t", "S/ 270,000"], ["CCP año t+1", "S/ 450,000"],
+          ["Compromiso año t+1", "S/ 450,000"], ["Crédito disponible 2026", "S/ 300,000"], ["PCA disponible 2026", "S/ 280,000"], ["Fuente", "Recursos Ordinarios"]
+        ],
+        t: ["Requerimiento", "Estudio de mercado", "CCP 2026", "Previsión 2027", "Contratación", "Contrato", "Compromiso 2026"],
+        t1: ["Inicio 2027", "Canje por CCP 2027", "Compromiso anual 2027"],
+        summary: [
+          ["Requerimiento","2026","Servicio multianual","S/ 720,000"],["Estudio de mercado","2026","Valor estimado","S/ 720,000"],
+          ["Certificación","2026","CCP año t","S/ 270,000"],["Previsión","2026","Previsión año t+1","S/ 450,000"],
+          ["Contratación","2026","Contrato total","S/ 720,000"],["Compromiso","2026","Compromiso anual año t","S/ 270,000"],
+          ["Canje","2027","CCP año t+1","S/ 450,000"],["Compromiso","2027","Compromiso anual año t+1","S/ 450,000"]
+        ],
+        stages: [
+          ["A1: Requerimiento","t",0,"El área usuaria solicita contratar el servicio de mantenimiento integral de estaciones geofísicas por seis meses, desde noviembre de 2026 hasta abril de 2027.","¿Qué debe advertir inicialmente el área usuaria y el OEC?",["Que se trata de una contratación que se ejecuta solo en el año 2026.","Que la ejecución contractual supera el año fiscal y debe distinguirse el monto de 2026 y el monto de 2027.","Que puede comprometerse todo el monto en 2026.","Que no se requiere intervención de Presupuesto."],1,"Correcto. Al superar el año fiscal, debe identificarse qué parte se ejecuta y compromete en 2026 y qué parte requiere previsión presupuestaria para 2027."],
+          ["A2: Estudio de mercado","t",1,"El estudio de mercado determina un valor estimado total de S/ 720,000. El cronograma asigna S/ 270,000 al año 2026 y S/ 450,000 al año 2027.","¿Qué monto debe certificarse en 2026 y qué monto debe preverse para 2027?",["CCP 2026 por S/ 720,000 y previsión 2027 por S/ 0.","CCP 2026 por S/ 270,000 y previsión 2027 por S/ 450,000.","CCP 2026 por S/ 450,000 y previsión 2027 por S/ 270,000.","Solo previsión 2027 por S/ 720,000."],1,"Correcto. La certificación corresponde al monto que afectará el presupuesto del año fiscal en curso. La previsión respalda obligaciones del año fiscal subsiguiente."],
+          ["A3: Certificación y previsión","t",2,"Crédito disponible 2026: S/ 300,000. PCA disponible 2026: S/ 280,000. Monto 2026: S/ 270,000. Recursos previstos 2027: S/ 450,000.","¿Puede Presupuesto emitir el CCP 2026 y la previsión 2027?",["Sí, porque el CCP 2026 está dentro del crédito y la PCA disponibles, y la previsión cubre el monto de 2027.","No, porque la contratación total es mayor a la PCA 2026.","Sí, pero certificando S/ 720,000 en 2026.","No se requiere previsión presupuestaria."],0,"Correcto. Para 2026 se certifica S/ 270,000, dentro del crédito y la PCA. Para 2027 se emite previsión por S/ 450,000."],
+          ["A4: Contratación y compromiso en año t","t",6,"Se realiza el procedimiento por S/ 720,000 y se suscribe contrato. El servicio inicia en noviembre de 2026.","¿Qué monto corresponde comprometer en 2026?",["S/ 720,000, porque es el monto total del contrato.","S/ 450,000, porque corresponde al año siguiente.","S/ 270,000, porque es el monto de la obligación que corresponde al año fiscal 2026.","Ningún monto, porque existe previsión."],2,"Correcto. El compromiso del año fiscal se efectúa por la obligación que corresponde a dicho año, con sujeción al monto certificado."],
+          ["A5: Inicio de t+1 y canje","t1",1,"Inicia 2027. La entidad cuenta con previsión emitida en 2026 por S/ 450,000 para continuar el servicio.","¿Qué debe hacer Presupuesto durante los primeros 30 días hábiles de 2027?",["Registrar directamente el compromiso sin CCP.","Canjear la previsión presupuestaria por el CCP 2027 por S/ 450,000, verificando crédito suficiente.","Anular el contrato automáticamente.","Emitir un nuevo estudio de mercado obligatorio."],1,"Correcto. La previsión no reemplaza al CCP del año siguiente. Debe emitirse el CCP respecto de la previsión emitida."],
+          ["A6: Compromiso anual en t+1","t1",2,"Ya se emitió el CCP 2027 por S/ 450,000. El contrato continúa entre enero y abril de 2027.","¿Qué monto debe registrarse como compromiso anual 2027?",["S/ 720,000.","S/ 270,000.","S/ 450,000.","S/ 0, porque ya se comprometió en 2026."],2,"Correcto. El compromiso anual 2027 corresponde al monto de la obligación que se ejecuta en ese año, con cargo al CCP emitido en 2027."]
+        ]
+      },
+      B: {
+        name: "Caso B: Convocatoria en último trimestre",
+        key: "Cuando se convoca en el último trimestre y contrato será en t+1, la previsión se emite antes de la convocatoria.",
+        metrics: [
+          ["Valor estimado", "S/ 580,000"], ["CCP año t", "No aplica"], ["Previsión año t+1", "S/ 580,000"],
+          ["Contratación", "S/ 580,000"], ["Compromiso año t", "S/ 0"], ["CCP año t+1", "S/ 580,000"],
+          ["Compromiso año t+1", "S/ 580,000"], ["Recursos previstos 2027", "S/ 600,000"], ["PCA disponible", "Se verifica en 2027"], ["Fuente", "RDR"]
+        ],
+        t: ["Requerimiento", "Estudio de mercado", "Previsión 2027", "Convocatoria"],
+        t1: ["Buena pro y contrato", "Canje por CCP 2027", "Compromiso anual 2027"],
+        summary: [
+          ["Requerimiento","2026","Bienes a ejecutar en t+1","S/ 580,000"],["Estudio de mercado","2026","Valor estimado","S/ 580,000"],
+          ["Previsión","2026","Previsión año t+1","S/ 580,000"],["Convocatoria","2026","Procedimiento de selección","S/ 580,000"],
+          ["Buena pro y contrato","2027","Contrato","S/ 580,000"],["Canje","2027","CCP año t+1","S/ 580,000"],
+          ["Compromiso","2027","Compromiso anual año t+1","S/ 580,000"]
+        ],
+        stages: [
+          ["B1: Requerimiento","t",0,"En octubre de 2026, el área usuaria requiere adquirir sensores sísmicos. El procedimiento será convocado en noviembre, pero la buena pro y contrato serán en enero de 2027.","¿Qué debe advertirse sobre este procedimiento?",["Que debe certificarse obligatoriamente en 2026 por todo el monto.","Que se trata de un procedimiento convocado en el último trimestre, cuya buena pro y contrato se realizarán en el siguiente año fiscal.","Que no se requiere ningún sustento presupuestario.","Que el compromiso se registra antes de la convocatoria."],1,"Correcto. En este supuesto corresponde contar con previsión presupuestaria antes de la convocatoria, respecto del valor estimado."],
+          ["B2: Estudio de mercado","t",1,"El estudio de mercado determina que el valor estimado de la adquisición asciende a S/ 580,000.","¿Qué documento presupuestario corresponde emitir antes de la convocatoria de noviembre de 2026?",["CCP 2026 por S/ 580,000.","Previsión presupuestaria 2027 por S/ 580,000.","Compromiso anual 2026 por S/ 580,000.","Devengado preventivo."],1,"Correcto. Como la ejecución, buena pro y contrato serán en 2027, antes de convocar en el último trimestre de 2026 se requiere previsión presupuestaria."],
+          ["B3: Validación de recursos previstos","t",2,"Valor estimado: S/ 580,000. Recursos previstos en proyecto de presupuesto 2027: S/ 600,000. Monto a ejecutar en 2026: S/ 0.","¿Puede emitirse la previsión presupuestaria por S/ 580,000?",["Sí, porque el monto se encuentra dentro de los recursos previstos para 2027.","No, porque no existe compromiso en 2026.","No, porque debe esperarse a marzo de 2027.","Sí, pero por S/ 600,000 aunque el valor estimado sea S/ 580,000."],0,"Correcto. La previsión debe emitirse por el valor estimado de la contratación, no por un monto mayor sin sustento."],
+          ["B4: Convocatoria en año t","t",3,"La entidad convoca el procedimiento en noviembre de 2026 por S/ 580,000, adjuntando la previsión presupuestaria.","¿Se registra compromiso anual en 2026?",["Sí, por S/ 580,000.","Sí, por S/ 290,000.","No, porque la obligación contractual nacerá en 2027 con la buena pro y suscripción del contrato.","Sí, porque la convocatoria equivale al contrato."],2,"Correcto. La convocatoria no equivale al compromiso. El contrato se perfeccionará en 2027 y el compromiso anual se registrará en ese ejercicio."],
+          ["B5: Buena pro y contrato en t+1","t1",1,"En enero de 2027 se otorga la buena pro y se suscribe el contrato para la adquisición por S/ 580,000.","Antes de registrar el compromiso anual 2027, ¿qué debe realizarse?",["Canjear la previsión presupuestaria por CCP 2027 por S/ 580,000.","Registrar devengado sin certificación.","Comprometer en 2026 de manera retroactiva.","Anular la previsión por haberse iniciado el nuevo año."],0,"Correcto. Durante los primeros 30 días hábiles de 2027 debe emitirse el CCP respecto de la previsión emitida."],
+          ["B6: Compromiso anual 2027","t1",2,"Emitido el CCP 2027 por S/ 580,000 y suscrito el contrato, se registra el compromiso anual.","¿Cuál es el monto correcto del compromiso anual 2027?",["S/ 0.","S/ 580,000.","S/ 600,000.","S/ 1,160,000."],1,"Correcto. El compromiso anual se registra por el monto del contrato correspondiente al año fiscal 2027, vinculado al CCP emitido en dicho año."]
+        ]
+      }
+    };
+    let currentCaseKey = "A", current = 0, score = 0, answered = false;
+    function showScreen(id){["startScreen","simScreen","resultScreen"].forEach(x=>document.getElementById(x).classList.toggle("active",x===id));}
+    function selectCase(key){currentCaseKey=key;current=0;score=0;answered=false;showScreen("simScreen");renderStage();}
+    function resetCurrentCase(){selectCase(currentCaseKey);}
+    function c(){return cases[currentCaseKey];}
+    function renderMetrics(){document.getElementById("metrics").innerHTML=c().metrics.map(m=>`<div class="metric"><span>${m[0]}</span><strong>${m[1]}</strong></div>`).join("");}
+    function renderLane(id, items, lane, activeIndex){document.getElementById(id).innerHTML=items.map((label,i)=>{let cls="pending";const stage=c().stages[current];if(lane===stage[1]&&i===activeIndex)cls=lane==="t"?"current-t":"current-t1";else if(isDone(lane,i))cls="done";const arrow=i<items.length-1?'<div class="arrow">→</div>':'';return `<div class="step-wrap"><div class="step ${cls}"><strong>${label}</strong><span>${lane==="t"?"Año 2026":"Año 2027"}</span></div>${arrow}</div>`}).join("");}
+    function isDone(lane,i){for(let k=0;k<current;k++){const st=c().stages[k];if(st[1]===lane&&st[2]>=i)return true}return false}
+    function renderStage(){const data=c(), st=data.stages[current];answered=false;document.getElementById("caseBadge").textContent=data.name;document.getElementById("stageBadge").textContent=`Etapa ${current+1} de ${data.stages.length}`;document.getElementById("scoreText").textContent=score;document.getElementById("progressBar").style.width=(current/data.stages.length*100)+"%";document.getElementById("stageTitle").textContent=st[0];document.getElementById("narrative").textContent=st[3];document.getElementById("question").textContent=st[4];document.getElementById("keyText").textContent=data.key;renderMetrics();renderLane("laneT",data.t,"t",st[1]==="t"?st[2]:-1);renderLane("laneT1",data.t1,"t1",st[1]==="t1"?st[2]:-1);const box=document.getElementById("optionsBox");box.innerHTML="";st[5].forEach((op,i)=>{const b=document.createElement("button");b.type="button";b.className="option";b.textContent=String.fromCharCode(65+i)+". "+op;b.onclick=()=>answer(i,b);box.appendChild(b)});document.getElementById("feedbackBox").className="feedback";document.getElementById("feedbackBox").innerHTML="";document.getElementById("nextButton").disabled=true;document.getElementById("nextButton").textContent=current===data.stages.length-1?"Ver resultado":"Siguiente paso";}
+    function answer(i,btn){if(answered)return;answered=true;const st=c().stages[current];const ok=i===st[6];document.querySelectorAll(".option").forEach(x=>x.disabled=true);btn.classList.add(ok?"correct":"incorrect");if(ok)score++;document.getElementById("scoreText").textContent=score;const fb=document.getElementById("feedbackBox");fb.className="feedback show "+(ok?"ok":"bad");fb.innerHTML=`<strong>${ok?"Respuesta correcta":"Respuesta incorrecta"}</strong><p>${st[7]}</p>`;document.getElementById("nextButton").disabled=false;}
+    function nextStage(){if(!answered)return;current++;if(current>=c().stages.length){renderResults();showScreen("resultScreen");return}renderStage();}
+    function renderResults(){const data=c();const percent=Math.round(score/data.stages.length*100);document.getElementById("finalScore").textContent=score;document.getElementById("finalPercent").textContent="Porcentaje de aciertos: "+percent+"%";let perf="Requiere repasar certificación, previsión y compromiso.";if(score===6)perf="Excelente dominio de previsión presupuestaria.";else if(score>=4)perf="Buen criterio, revisar canje y compromiso anual.";else if(score>=2)perf="Requiere reforzar diferencia entre CCP y previsión.";document.getElementById("performanceText").textContent="Nivel de desempeño: "+perf;document.getElementById("summaryRows").innerHTML=data.summary.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join("");}
+  </script>
+</body>
+</html>

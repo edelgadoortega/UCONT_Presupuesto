@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Certificación Presupuestaria y Partidas Restringidas 2026</title>
+  <style>
+    :root {
+      --azul:#1d4ed8; --azul-oscuro:#1e3a8a; --azul-suave:#dbeafe;
+      --verde:#15803d; --verde-suave:#dcfce7;
+      --amarillo:#a16207; --amarillo-suave:#fef3c7;
+      --rojo:#b91c1c; --rojo-suave:#fee2e2;
+      --gris:#64748b; --gris-suave:#f1f5f9;
+      --texto:#0f172a; --borde:#dbe3ef;
+      --sombra:0 18px 45px rgba(15,23,42,.12); --radio:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef4ff;color:var(--texto)}
+    header{background:linear-gradient(135deg,#12326f,var(--azul));color:white;padding:28px 20px;text-align:center}
+    header h1{margin:0;font-size:clamp(1.55rem,3vw,2.55rem);letter-spacing:0}
+    header p{max-width:960px;margin:10px auto 0;line-height:1.5;opacity:.96}
+    main{width:min(1240px,calc(100% - 32px));margin:24px auto 48px}
+    h2,h3{margin-top:0;letter-spacing:0}.small{color:#475569;font-size:.95rem;line-height:1.55}
+    .screen{display:none;animation:fadeIn .25s ease}.screen.active{display:block}
+    .panel{background:white;border:1px solid var(--borde);border-radius:var(--radio);box-shadow:var(--sombra);padding:20px;margin-bottom:18px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.col-8{grid-column:span 8}.col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-12{grid-column:span 12}
+    @media(max-width:900px){.col-8,.col-6,.col-4{grid-column:span 12}}
+    .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    button{border:0;border-radius:12px;padding:12px 16px;font-size:1rem;font-weight:900;cursor:pointer;transition:transform .15s ease,opacity .15s ease}
+    button:hover{transform:translateY(-1px)}button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .btn-primary{background:var(--azul);color:white}.btn-secondary{background:#e2e8f0;color:var(--texto)}.btn-success{background:var(--verde);color:white}
+    .topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#e0f2fe;color:#075985;font-weight:900;font-size:.84rem;margin:3px}
+    .score{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;background:#eff6ff;color:var(--azul-oscuro);border:1px solid #bfdbfe;font-weight:900}
+    .progress{height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:10px 0 16px}.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--azul),#22c55e);transition:width .3s ease}
+    .case-tray{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+    @media(max-width:960px){.case-tray{grid-template-columns:repeat(4,1fr)}}@media(max-width:560px){.case-tray{grid-template-columns:repeat(2,1fr)}}
+    .case-chip{border:1px solid var(--borde);background:#f8fafc;border-radius:12px;padding:10px;text-align:center;font-weight:900;color:#334155}
+    .case-chip.active{background:var(--azul-suave);border-color:var(--azul);color:var(--azul-oscuro)}.case-chip.done{background:var(--verde-suave);border-color:#22c55e;color:#14532d}.case-chip.bad{background:var(--rojo-suave);border-color:#ef4444;color:#7f1d1d}
+    .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    @media(max-width:800px){.facts{grid-template-columns:1fr}}
+    .fact{background:#f8fafc;border:1px solid var(--borde);border-radius:12px;padding:12px;min-height:80px}
+    .fact span{display:block;color:var(--gris);font-size:.82rem;font-weight:800;margin-bottom:5px}.fact strong{display:block;color:var(--azul-oscuro);font-size:1.02rem}
+    .tree{display:grid;gap:8px;margin-top:12px}.tree-node{border:2px solid #cbd5e1;border-radius:12px;background:#f8fafc;padding:10px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .tree-node .level{font-weight:900;color:#334155}.tree-node .code{color:#475569;font-size:.9rem}.tree-node.restricted{background:var(--rojo-suave);border-color:#ef4444}.tree-node.reached{background:var(--amarillo-suave);border-color:#f59e0b}
+    .decision-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+    @media(max-width:900px){.decision-grid{grid-template-columns:1fr}}
+    .decision-card{border:1px solid var(--borde);border-radius:13px;background:#f8fafc;padding:14px}
+    select{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font-size:1rem;background:white}
+    .feedback{display:none;border-radius:14px;padding:16px;margin-top:16px;line-height:1.55;animation:fadeIn .2s ease}.feedback.show{display:block}.feedback.ok{background:var(--verde-suave);border:1px solid #86efac;color:#14532d}.feedback.warn{background:var(--amarillo-suave);border:1px solid #fde68a;color:#713f12}.feedback.bad{background:var(--rojo-suave);border:1px solid #fecaca;color:#7f1d1d}
+    .rules{display:none}.rules.show{display:block}.rules-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}@media(max-width:760px){.rules-grid{grid-template-columns:1fr}}
+    .rule{border:1px solid var(--borde);background:#f8fafc;border-radius:12px;padding:12px}.rule strong{color:var(--azul-oscuro)}
+    .summary-table{width:100%;border-collapse:collapse;margin-top:12px}.summary-table th,.summary-table td{border-bottom:1px solid #e2e8f0;padding:11px;text-align:left;vertical-align:top}.summary-table th{background:#eff6ff;color:var(--azul-oscuro)}
+    .conclusion{background:#f8fafc;border-left:5px solid var(--azul);border-radius:12px;padding:16px;line-height:1.55}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulador de Certificación Presupuestaria y Partidas Restringidas 2026</h1>
+    <p>Rol: Especialista en Presupuesto</p>
+  </header>
+
+  <main>
+    <section id="startScreen" class="screen active">
+      <div class="panel">
+        <h2>Bandeja de solicitudes de CCP</h2>
+        <p class="small">
+          Usted es Especialista en Presupuesto. Revise cada solicitud, identifique la partida restringida y decida si procede el CCP,
+          si corresponde observar, rechazar o denegar una modificación presupuestaria.
+        </p>
+        <div class="facts">
+          <div class="fact"><span>Casos</span><strong>7 solicitudes</strong></div>
+          <div class="fact"><span>Puntaje máximo</span><strong>21 puntos</strong></div>
+          <div class="fact"><span>Evaluación</span><strong>Nivel + tipo + decisión</strong></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="startSimulator()">Iniciar simulador</button>
+          <button class="btn-secondary" onclick="toggleRules()">Revisar reglas de partidas restringidas</button>
+        </div>
+      </div>
+
+      <div id="rulesPanel" class="panel rules">
+        <h2>Recordatorio normativo</h2>
+        <p class="small">
+          La Ley de Presupuesto del Sector Público para el Año Fiscal 2026 establece restricciones para determinadas partidas y créditos presupuestarios. Estas inciden en modificaciones presupuestarias en el nivel funcional programático y deben revisarse antes de aprobar una certificación que dependa de una modificación.
+        </p>
+        <div class="rules-grid">
+          <div class="rule"><strong>2.1.1 Retribuciones y Complementos</strong><br>No puede habilitar otras partidas ni ser habilitada, salvo excepciones internas permitidas.</div>
+          <div class="rule"><strong>2.1.1 13 CAS</strong><br>No puede ser habilitada, salvo habilitaciones entre unidades ejecutoras del mismo pliego u otras excepciones expresas.</div>
+          <div class="rule"><strong>2.1.3 Seguridad Social</strong><br>No puede habilitar otras partidas de gasto.</div>
+          <div class="rule"><strong>2.3.2.4 Mantenimiento</strong><br>Durante el primer semestre de 2026 no puede habilitar otras partidas, salvo movimientos internos permitidos.</div>
+          <div class="rule"><strong>2.3.2.7.1 Consultorías PJ</strong><br>No puede ser habilitada, salvo habilitaciones internas permitidas.</div>
+          <div class="rule"><strong>2.3.2.2.4 Publicidad</strong><br>No puede ser habilitada, salvo habilitaciones internas permitidas.</div>
+          <div class="rule"><strong>2.3.2.7.11.99 Servicios diversos</strong><br>No puede ser habilitada, salvo habilitaciones internas permitidas.</div>
+          <div class="rule"><strong>Actividad 5006144 Emergencia</strong><br>No pueden efectuarse anulaciones con cargo a sus créditos, salvo excepción expresa.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Conceptos clave</h2>
+        <table class="summary-table">
+          <thead><tr><th>Concepto</th><th>Explicación</th></tr></thead>
+          <tbody>
+            <tr><td>Partida habilitadora</td><td>Partida desde la cual se retira presupuesto para financiar otra.</td></tr>
+            <tr><td>Partida habilitada</td><td>Partida que recibe presupuesto mediante modificación presupuestaria.</td></tr>
+            <tr><td>Restricción como habilitadora</td><td>La partida no puede financiar otra.</td></tr>
+            <tr><td>Restricción como habilitada</td><td>La partida no puede recibir recursos desde otra.</td></tr>
+            <tr><td>Anulación restringida</td><td>No se puede reducir crédito de determinada actividad, finalidad o partida.</td></tr>
+            <tr><td>Alcance por nivel</td><td>Si la restricción está en una partida superior, sus subpartidas quedan comprendidas.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="simScreen" class="screen">
+      <div class="panel">
+        <div class="topline">
+          <div><span class="badge" id="caseBadge">Caso 1 de 7</span><span class="badge">Especialista en Presupuesto</span></div>
+          <div class="score">Puntaje: <span id="scoreText">0</span>/21</div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div id="caseTray" class="case-tray"></div>
+      </div>
+
+      <div class="grid">
+        <div class="col-8">
+          <div class="panel">
+            <h2 id="caseTitle">Caso</h2>
+            <p id="caseSituation" class="small"></p>
+            <div id="caseFacts" class="facts"></div>
+          </div>
+          <div class="panel">
+            <h2>Responda los tres pasos</h2>
+            <div class="decision-grid">
+              <div class="decision-card">
+                <h3>Paso 1: Nivel</h3>
+                <select id="levelSelect">
+                  <option value="">Seleccione</option>
+                  <option value="generica">Genérica</option>
+                  <option value="sub1">Subgenérica nivel 1</option>
+                  <option value="sub2">Subgenérica nivel 2</option>
+                  <option value="esp">Específica nivel 1 o 2</option>
+                  <option value="actividad">Actividad o finalidad presupuestaria</option>
+                  <option value="none">No existe restricción aplicable</option>
+                </select>
+              </div>
+              <div class="decision-card">
+                <h3>Paso 2: Tipo</h3>
+                <select id="typeSelect">
+                  <option value="">Seleccione</option>
+                  <option value="habilitadora">No puede ser habilitadora</option>
+                  <option value="habilitada">No puede ser habilitada</option>
+                  <option value="anulacion">No se pueden efectuar anulaciones</option>
+                  <option value="gastoPropio">La restricción no impide la certificación del gasto propio</option>
+                  <option value="doble">Doble restricción: habilitadora y habilitada</option>
+                  <option value="ambas">No puede ser habilitadora ni habilitada</option>
+                  <option value="none">No aplica restricción</option>
+                </select>
+              </div>
+              <div class="decision-card">
+                <h3>Paso 3: Decisión</h3>
+                <select id="decisionSelect">
+                  <option value="">Seleccione</option>
+                  <option value="emitir">Emitir CCP</option>
+                  <option value="saldo">Emitir CCP solo por saldo disponible</option>
+                  <option value="observar">Observar solicitud</option>
+                  <option value="rechazar">Rechazar certificación</option>
+                  <option value="denegar">Denegar modificación presupuestaria</option>
+                  <option value="ajuste">Solicitar ajuste de cadena o financiamiento</option>
+                  <option value="mixta">Emitir gasto propio y denegar anulación</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn-primary" onclick="evaluateCase()">Evaluar caso</button>
+              <button id="nextButton" class="btn-success" onclick="nextCase()" disabled>Siguiente caso</button>
+              <button class="btn-secondary" onclick="resetSimulator()">Reiniciar simulador</button>
+            </div>
+            <div id="feedbackBox" class="feedback" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="col-4">
+          <div class="panel">
+            <h2>Árbol de clasificación</h2>
+            <p class="small">Rojo: nivel donde opera la restricción. Amarillo: subpartidas alcanzadas.</p>
+            <div id="classTree" class="tree"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="panel">
+        <h2>Resultado del estudiante</h2>
+        <p class="score">Puntaje total: <span id="finalScore">0</span>/21</p>
+        <p class="small" id="finalPercent"></p>
+        <p class="small" id="performanceText"></p>
+        <p class="small" id="recommendationText"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Tabla resumen</h2>
+        <table class="summary-table">
+          <thead><tr><th>Caso</th><th>Partida restringida</th><th>Nivel</th><th>Tipo</th><th>Decisión correcta</th></tr></thead>
+          <tbody id="summaryRows"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>Conclusión pedagógica</h2>
+        <div class="conclusion">
+          La revisión de partidas restringidas debe realizarse antes de emitir un CCP que dependa de una modificación presupuestaria.
+          El Especialista en Presupuesto debe analizar el clasificador completo y la estructura programática. Una restricción ubicada
+          en un nivel superior alcanza a sus subpartidas, salvo excepción expresa. Además, una partida restringida puede permitir
+          certificación para su finalidad propia, pero impedir que sea usada como habilitadora o que sea incrementada desde otra partida.
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const cases = [
+      {
+        title:"Caso 1: Consultoría financiada con mantenimiento",
+        situation:"La Oficina de Planeamiento solicita certificar S/ 85,000 para contratar una consultoría de diagnóstico organizacional.",
+        facts:[["Área solicitante","Oficina de Planeamiento"],["Objeto","Consultoría de persona jurídica"],["Clasificador solicitado","2.3.2.7.1 Consultorías PJ"],["Monto solicitado","S/ 85,000"],["Crédito / PCA actual","S/ 20,000 / S/ 20,000"],["Modificación propuesta","S/ 65,000 desde 2.3.2.4 Mantenimiento"],["Fecha","Abril 2026"],["Expediente","Completo"]],
+        tree:["2 Genérica","2.3 Subgenérica 1","2.3.2 Subgenérica 2","2.3.2.7 Específica 1","2.3.2.7.1 Específica 2"],
+        restricted:4,reached:[3],level:"esp",type:"doble",decision:"denegar",
+        restrictedText:"2.3.2.4 / 2.3.2.7.1",levelText:"Específica",typeText:"Habilitadora / habilitada",decisionText:"Denegar modificación",
+        feedback:"No basta con tener necesidad institucional. La modificación vulnera la restricción de mantenimiento como partida habilitadora durante el primer semestre y la restricción de consultorías como partida habilitada."
+      },
+      {
+        title:"Caso 2: CAS con habilitación desde servicios diversos",
+        situation:"La Oficina de Administración solicita certificar S/ 120,000 para contratar personal CAS temporal de apoyo administrativo.",
+        facts:[["Área solicitante","Oficina de Administración"],["Objeto","Contratación CAS"],["Clasificador solicitado","2.1.1 13 CAS"],["Monto solicitado","S/ 120,000"],["Crédito / PCA actual","S/ 40,000 / S/ 40,000"],["Modificación propuesta","S/ 80,000 desde 2.3.2.7.11.99 Servicios diversos"],["Nivel de gobierno","Gobierno Nacional"],["Expediente","Completo"]],
+        tree:["2 Genérica","2.1 Subgenérica 1","2.1.1 Subgenérica 2","2.1.1 13 CAS","Subpartidas CAS"],
+        restricted:2,reached:[3,4],level:"sub2",type:"habilitada",decision:"denegar",
+        restrictedText:"2.1.1 13 CAS",levelText:"Subgenérica nivel 2",typeText:"No puede ser habilitada",decisionText:"No emitir CCP total",
+        feedback:"La restricción está en 2.1.1 13 CAS y alcanza a sus subpartidas. No puede incrementarse desde otra partida, salvo excepción aplicable."
+      },
+      {
+        title:"Caso 3: Mantenimiento correctivo con crédito propio",
+        situation:"La Dirección Técnica solicita certificar S/ 95,000 para mantenimiento correctivo de estaciones geofísicas.",
+        facts:[["Área solicitante","Dirección Técnica"],["Objeto","Servicio de mantenimiento correctivo"],["Clasificador solicitado","2.3.2.4 Mantenimiento"],["Monto solicitado","S/ 95,000"],["Crédito disponible","S/ 110,000"],["PCA disponible","S/ 100,000"],["Modificación requerida","No"],["Expediente","Completo"]],
+        tree:["2 Genérica","2.3 Subgenérica 1","2.3.2 Subgenérica 2","2.3.2.4 Específica 1","Subpartidas de mantenimiento"],
+        restricted:3,reached:[4],level:"esp",type:"gastoPropio",decision:"emitir",
+        restrictedText:"2.3.2.4",levelText:"Específica",typeText:"No impide gasto propio",decisionText:"Emitir CCP",
+        feedback:"La restricción de 2.3.2.4 impide usarla como habilitadora durante el primer semestre, pero no impide certificar gasto propio si existe crédito, PCA y expediente sustentado."
+      },
+      {
+        title:"Caso 4: Publicidad institucional con habilitación desde viáticos",
+        situation:"La Oficina de Comunicaciones solicita certificar S/ 60,000 para una campaña de difusión institucional.",
+        facts:[["Área solicitante","Oficina de Comunicaciones"],["Objeto","Publicidad e imagen institucional"],["Clasificador solicitado","2.3.2.2.4"],["Monto solicitado","S/ 60,000"],["Crédito / PCA actual","S/ 15,000 / S/ 15,000"],["Modificación propuesta","S/ 45,000 desde viáticos"],["Expediente","Completo"]],
+        tree:["2 Genérica","2.3 Subgenérica 1","2.3.2 Subgenérica 2","2.3.2.2 Específica 1","2.3.2.2.4 Específica 2"],
+        restricted:4,reached:[],level:"esp",type:"habilitada",decision:"saldo",
+        restrictedText:"2.3.2.2.4",levelText:"Específica",typeText:"No puede ser habilitada",decisionText:"Solo saldo / observar",
+        feedback:"La partida 2.3.2.2.4 no puede ser habilitada desde otra partida, salvo movimientos internos permitidos. No corresponde incrementarla desde viáticos."
+      },
+      {
+        title:"Caso 5: Seguridad social como habilitadora",
+        situation:"Recursos Humanos solicita certificar S/ 35,000 para contribuciones a EsSalud. Administración propone retirar S/ 20,000 de esa partida para comprar equipos menores.",
+        facts:[["Área solicitante","Recursos Humanos"],["Objeto","Contribuciones a la seguridad social"],["Clasificador solicitado","2.1.3"],["Monto CCP solicitado","S/ 35,000"],["Crédito disponible","S/ 35,000"],["PCA disponible","S/ 35,000"],["Propuesta adicional","Anular S/ 20,000 para equipos"],["Expediente","Completo"]],
+        tree:["2 Genérica","2.1 Subgenérica 1","2.1.3 Subgenérica 1","Subpartidas de seguridad social","Uso como habilitadora"],
+        restricted:2,reached:[3,4],level:"sub1",type:"habilitadora",decision:"mixta",
+        restrictedText:"2.1.3",levelText:"Subgenérica nivel 1",typeText:"No puede ser habilitadora",decisionText:"Emitir gasto propio y denegar anulación",
+        feedback:"La partida 2.1.3 puede certificarse para su finalidad propia, pero no puede utilizarse como fuente para habilitar otros gastos."
+      },
+      {
+        title:"Caso 6: Equipos financiados con remuneraciones",
+        situation:"Logística solicita certificar S/ 200,000 para adquirir equipos de cómputo. Propone financiar la adquisición anulando saldos de remuneraciones.",
+        facts:[["Área solicitante","Logística"],["Objeto","Equipos de cómputo"],["Clasificador solicitado","2.6 Activos no financieros"],["Monto solicitado","S/ 200,000"],["Crédito disponible en 2.6","S/ 0"],["Partida habilitadora","2.1.1 Retribuciones"],["Justificación","Saldos temporales de planilla"],["Expediente","Completo"]],
+        tree:["2 Genérica","2.1 Subgenérica 1","2.1.1 Subgenérica 1","Subpartidas remunerativas","Uso para financiar 2.6"],
+        restricted:2,reached:[3,4],level:"sub1",type:"ambas",decision:"denegar",
+        restrictedText:"2.1.1",levelText:"Subgenérica nivel 1",typeText:"No habilitadora ni habilitada",decisionText:"Denegar modificación",
+        feedback:"La restricción está en 2.1.1 y alcanza a sus subpartidas. No corresponde usar saldos de remuneraciones para financiar adquisición de activos."
+      },
+      {
+        title:"Caso 7: Servicio financiado con actividad de emergencia",
+        situation:"Administración solicita certificar S/ 70,000 para contratar un servicio de archivo documentario. Propone anular créditos de la actividad 5006144 Atención de Actividades de Emergencia.",
+        facts:[["Área solicitante","Administración"],["Objeto","Servicio de archivo documentario"],["Clasificador solicitado","2.3.2.7.11.99 Servicios diversos"],["Monto solicitado","S/ 70,000"],["Actividad habilitadora","5006144 Atención de Emergencia"],["Modificación propuesta","Anulación de créditos de emergencia"],["Expediente","Completo"]],
+        tree:["Programa / Producto","Actividad presupuestaria","5006144 Atención de Actividades de Emergencia","Finalidad asociada","Créditos de emergencia"],
+        restricted:2,reached:[3,4],level:"actividad",type:"anulacion",decision:"denegar",
+        restrictedText:"5006144",levelText:"Actividad",typeText:"No anulaciones",decisionText:"Denegar modificación",
+        feedback:"Las restricciones también pueden operar por actividad presupuestaria. No pueden efectuarse anulaciones con cargo a la actividad de emergencia, salvo excepción expresa."
+      }
+    ];
+
+    let current = 0;
+    let score = 0;
+    let answered = false;
+    const results = [];
+
+    function showScreen(id) {
+      ["startScreen", "simScreen", "resultScreen"].forEach(screenId => {
+        document.getElementById(screenId).classList.toggle("active", screenId === id);
+      });
+    }
+
+    function toggleRules() {
+      document.getElementById("rulesPanel").classList.toggle("show");
+    }
+
+    function startSimulator() {
+      current = 0;
+      score = 0;
+      answered = false;
+      results.length = 0;
+      showScreen("simScreen");
+      renderCase();
+    }
+
+    function renderTray() {
+      document.getElementById("caseTray").innerHTML = cases.map((item, index) => {
+        let cls = "case-chip";
+        if (index === current) cls += " active";
+        else if (results[index]) cls += results[index].points === 3 ? " done" : " bad";
+        return `<div class="${cls}">Caso ${index + 1}</div>`;
+      }).join("");
+    }
+
+    function renderFacts(item) {
+      document.getElementById("caseFacts").innerHTML = item.facts.map(fact => `
+        <div class="fact"><span>${fact[0]}</span><strong>${fact[1]}</strong></div>
+      `).join("");
+    }
+
+    function renderTree(item) {
+      document.getElementById("classTree").innerHTML = item.tree.map((node, index) => {
+        let cls = "tree-node";
+        if (index === item.restricted) cls += " restricted";
+        if (item.reached.includes(index)) cls += " reached";
+        return `<div class="${cls}"><span class="level">Nivel ${index + 1}</span><span class="code">${node}</span></div>`;
+      }).join("");
+    }
+
+    function renderCase() {
+      const item = cases[current];
+      answered = false;
+      document.getElementById("caseBadge").textContent = "Caso " + (current + 1) + " de " + cases.length;
+      document.getElementById("scoreText").textContent = score;
+      document.getElementById("progressBar").style.width = (current / cases.length * 100) + "%";
+      document.getElementById("caseTitle").textContent = item.title;
+      document.getElementById("caseSituation").textContent = item.situation;
+      renderTray();
+      renderFacts(item);
+      renderTree(item);
+      ["levelSelect", "typeSelect", "decisionSelect"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("feedbackBox").className = "feedback";
+      document.getElementById("feedbackBox").innerHTML = "";
+      document.getElementById("nextButton").disabled = true;
+      document.getElementById("nextButton").textContent = current === cases.length - 1 ? "Ver resultado" : "Siguiente caso";
+    }
+
+    function evaluateCase() {
+      if (answered) return;
+      const item = cases[current];
+      const level = document.getElementById("levelSelect").value;
+      const type = document.getElementById("typeSelect").value;
+      const decision = document.getElementById("decisionSelect").value;
+      if (!level || !type || !decision) {
+        const fb = document.getElementById("feedbackBox");
+        fb.className = "feedback show warn";
+        fb.innerHTML = "<strong>Faltan respuestas</strong><p>Debe responder los tres pasos antes de evaluar el caso.</p>";
+        return;
+      }
+
+      answered = true;
+      let points = 0;
+      if (level === item.level) points += 1;
+      if (type === item.type) points += 1;
+      if (decision === item.decision) points += 1;
+      score += points;
+      results[current] = { points, level: level === item.level, type: type === item.type, decision: decision === item.decision };
+
+      const fb = document.getElementById("feedbackBox");
+      fb.className = "feedback show " + (points === 3 ? "ok" : points > 0 ? "warn" : "bad");
+      fb.innerHTML = `
+        <strong>${points}/3 puntos en este caso</strong>
+        <p>${item.feedback}</p>
+        <p><strong>Partida restringida:</strong> ${item.restrictedText}<br>
+        <strong>Nivel:</strong> ${item.levelText}<br>
+        <strong>Tipo:</strong> ${item.typeText}<br>
+        <strong>Decisión esperada:</strong> ${item.decisionText}</p>
+      `;
+      document.getElementById("scoreText").textContent = score;
+      document.getElementById("nextButton").disabled = false;
+      renderTray();
+    }
+
+    function nextCase() {
+      if (!answered) return;
+      current += 1;
+      if (current >= cases.length) {
+        renderResults();
+        showScreen("resultScreen");
+        return;
+      }
+      renderCase();
+    }
+
+    function renderResults() {
+      const percent = Math.round(score / 21 * 100);
+      document.getElementById("finalScore").textContent = score;
+      document.getElementById("finalPercent").textContent = "Porcentaje de aciertos: " + percent + "%";
+      let level = "Requiere repasar restricciones y modificaciones presupuestarias.";
+      if (score >= 19) level = "Excelente dominio de partidas restringidas.";
+      else if (score >= 15) level = "Buen criterio presupuestario.";
+      else if (score >= 10) level = "Requiere reforzar niveles de clasificación.";
+      document.getElementById("performanceText").textContent = "Nivel de desempeño: " + level;
+
+      const failed = results.map((r, i) => r.points === 3 ? null : i + 1).filter(Boolean);
+      document.getElementById("recommendationText").textContent = failed.length
+        ? "Recomendación: repase los casos " + failed.join(", ") + ", especialmente el nivel de clasificación y el rol habilitador/habilitado de la partida."
+        : "Recomendación: mantenga el análisis por nivel de clasificador, disponibilidad, PCA, fuente, meta y expediente sustentatorio.";
+
+      document.getElementById("summaryRows").innerHTML = cases.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${item.restrictedText}</td>
+          <td>${item.levelText}</td>
+          <td>${item.typeText}</td>
+          <td>${item.decisionText}</td>
+        </tr>
+      `).join("");
+    }
+
+    function resetSimulator() {
+      startSimulator();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Certificación Presupuestal en Donaciones y Transferencias</title>
+  <style>
+    :root {
+      --blue: #1d4ed8;
+      --blue-dark: #1e3a8a;
+      --blue-soft: #dbeafe;
+      --green: #15803d;
+      --green-soft: #dcfce7;
+      --yellow: #a16207;
+      --yellow-soft: #fef3c7;
+      --red: #b91c1c;
+      --red-soft: #fee2e2;
+      --gray: #64748b;
+      --gray-soft: #f1f5f9;
+      --ink: #0f172a;
+      --border: #dbe3ef;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: #eef4ff;
+    }
+
+    header {
+      background: linear-gradient(135deg, #12326f, var(--blue));
+      color: white;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 3vw, 2.55rem);
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 10px auto 0;
+      max-width: 900px;
+      line-height: 1.5;
+      opacity: 0.96;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+
+    h2, h3 { margin-top: 0; letter-spacing: 0; }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .screen.active { display: block; }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .small {
+      color: #475569;
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .col-8 { grid-column: span 8; }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+
+    @media (max-width: 860px) {
+      .col-8, .col-6, .col-4 { grid-column: span 12; }
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .facts { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 620px) {
+      .facts { grid-template-columns: 1fr; }
+    }
+
+    .fact {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 104px;
+    }
+
+    .fact span {
+      display: block;
+      color: var(--gray);
+      font-size: 0.86rem;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .fact strong {
+      display: block;
+      color: var(--blue-dark);
+      font-size: 1.2rem;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-secondary { background: #e2e8f0; color: var(--ink); }
+    .btn-success { background: var(--green); color: white; }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #e0f2fe;
+      color: #075985;
+      font-weight: 900;
+      font-size: 0.84rem;
+      margin: 3px;
+    }
+
+    .score {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #eff6ff;
+      color: var(--blue-dark);
+      border: 1px solid #bfdbfe;
+      font-weight: 900;
+    }
+
+    .year-progress {
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0 18px;
+    }
+
+    .year-progress > div {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--blue), #22c55e);
+      transition: width 0.3s ease;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 900px) {
+      .timeline { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 620px) {
+      .timeline { grid-template-columns: 1fr; }
+    }
+
+    .quarter {
+      border: 2px solid #cbd5e1;
+      border-radius: 14px;
+      background: #f8fafc;
+      padding: 14px;
+      min-height: 188px;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .quarter h3 { margin-bottom: 8px; }
+    .quarter p { margin: 6px 0; }
+
+    .quarter.pending { background: #f8fafc; border-color: #cbd5e1; }
+    .quarter.current { background: var(--blue-soft); border-color: var(--blue); transform: translateY(-2px); }
+    .quarter.received { background: var(--green-soft); border-color: #22c55e; }
+    .quarter.warning { background: var(--yellow-soft); border-color: #f59e0b; }
+    .quarter.missed { background: var(--red-soft); border-color: #ef4444; }
+    .quarter.wrong { background: var(--red-soft); border-color: var(--red); transform: translateY(-2px); }
+
+    .metric-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .metric-board { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 620px) {
+      .metric-board { grid-template-columns: 1fr; }
+    }
+
+    .availability {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .meter {
+      height: 14px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .meter > div {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--yellow), var(--green));
+      transition: width 0.3s ease;
+    }
+
+    .case-box {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .options {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .option {
+      text-align: left;
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 14px 16px;
+      line-height: 1.35;
+    }
+
+    .option:hover {
+      border-color: var(--blue);
+      background: #eff6ff;
+    }
+
+    .option.correct {
+      background: var(--green-soft);
+      color: #14532d;
+      border-color: #22c55e;
+    }
+
+    .option.incorrect {
+      background: var(--red-soft);
+      color: #7f1d1d;
+      border-color: #ef4444;
+    }
+
+    .feedback {
+      display: none;
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+      line-height: 1.55;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .feedback.show { display: block; }
+    .feedback.ok { background: var(--green-soft); border: 1px solid #86efac; color: #14532d; }
+    .feedback.bad { background: var(--red-soft); border: 1px solid #fecaca; color: #7f1d1d; }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 11px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .summary-table th {
+      background: #eff6ff;
+      color: var(--blue-dark);
+    }
+
+    .conclusion {
+      background: #f8fafc;
+      border-left: 5px solid var(--blue);
+      border-radius: 12px;
+      padding: 16px;
+      line-height: 1.55;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulador de Certificación Presupuestal en Donaciones y Transferencias</h1>
+    <p>Convenio con cooperante internacional y percepción efectiva de ingresos</p>
+  </header>
+
+  <main>
+    <section id="startScreen" class="screen active">
+      <div class="panel">
+        <h2>Caso de aprendizaje</h2>
+        <p class="small">
+          Una entidad pública tiene programados S/ 200,000 en la fuente Donaciones y Transferencias, sustentados
+          en un convenio con un cooperante internacional. El convenio prevé cuatro remesas trimestrales de
+          S/ 50,000. La entidad desea adquirir un bien valorizado en S/ 120,000.
+        </p>
+        <div class="facts">
+          <div class="fact"><span>Fuente de financiamiento</span><strong>Donaciones y Transferencias</strong></div>
+          <div class="fact"><span>Presupuesto programado</span><strong>S/ 200,000</strong></div>
+          <div class="fact"><span>Remesas pactadas</span><strong>S/ 50,000</strong></div>
+          <div class="fact"><span>Bien a adquirir</span><strong>S/ 120,000</strong></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="startSimulator()">Iniciar simulador</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Criterio presupuestario</h2>
+        <p class="small">
+          El convenio genera una expectativa de financiamiento, pero no garantiza caja. La transferencia programada
+          no equivale a transferencia percibida. Para certificar debe verificarse crédito presupuestario disponible,
+          fuente correcta y consistencia con la disponibilidad real de recursos.
+        </p>
+      </div>
+    </section>
+
+    <section id="simScreen" class="screen">
+      <div class="panel">
+        <div class="topline">
+          <div>
+            <span class="badge" id="momentBadge">Primer trimestre</span>
+            <span class="badge" id="statusBadge">Trimestre actual</span>
+          </div>
+          <div class="score">Puntaje: <span id="scoreText">0</span>/4</div>
+        </div>
+        <div class="year-progress" aria-label="Barra de avance del año fiscal">
+          <div id="yearBar"></div>
+        </div>
+
+        <div class="timeline" id="timeline"></div>
+
+        <div class="metric-board">
+          <div class="fact"><span>Presupuesto total programado</span><strong>S/ 200,000</strong></div>
+          <div class="fact"><span>Transferencia esperada por trimestre</span><strong>S/ 50,000</strong></div>
+          <div class="fact"><span>Monto del bien a certificar</span><strong>S/ 120,000</strong></div>
+          <div class="fact"><span>Total recibido acumulado</span><strong id="receivedText">S/ 0</strong></div>
+        </div>
+
+        <div class="availability">
+          <strong id="gapText">Brecha frente al bien: S/ 120,000</strong>
+          <div class="meter" aria-label="Medidor de disponibilidad frente al bien">
+            <div id="availabilityBar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="grid">
+          <div class="col-8">
+            <div class="case-box">
+              <h2 id="momentTitle">Momento</h2>
+              <p class="small" id="momentSituation"></p>
+              <h3 id="momentQuestion"></h3>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="case-box">
+              <h3>Datos visibles</h3>
+              <p class="small" id="visibleData"></p>
+            </div>
+          </div>
+        </div>
+        <div class="options" id="optionsBox"></div>
+        <div id="feedbackBox" class="feedback" aria-live="polite"></div>
+        <div class="btn-row">
+          <button id="nextButton" class="btn-success" onclick="nextMoment()" disabled>Siguiente trimestre</button>
+          <button class="btn-secondary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="panel">
+        <h2>Resultado</h2>
+        <p class="score">Puntaje obtenido: <span id="finalScore">0</span>/4</p>
+        <p class="small" id="finalPercent"></p>
+        <p class="small" id="performanceText"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Resumen del caso</h2>
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Momento</th>
+              <th>Transferencia esperada</th>
+              <th>Transferencia recibida</th>
+              <th>Acumulado</th>
+              <th>Decisión correcta</th>
+            </tr>
+          </thead>
+          <tbody id="summaryRows"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>Conclusión pedagógica</h2>
+        <div class="conclusion">
+          En la fuente Donaciones y Transferencias, el convenio y la programación presupuestal son importantes,
+          pero no reemplazan la verificación de la transferencia efectivamente percibida. La certificación debe
+          estar respaldada por crédito presupuestario disponible, registro correcto de la fuente y disponibilidad
+          suficiente para financiar el gasto. Certificar sobre recursos no recibidos genera riesgo de desfinanciamiento.
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const assetAmount = 120000;
+    const moments = [
+      {
+        name: "Primer trimestre",
+        expected: 50000,
+        received: 50000,
+        accumulated: 50000,
+        state: "received",
+        situation: "Llega el primer trimestre y el cooperante internacional transfiere la primera remesa de S/ 50,000.",
+        question: "¿Puede la entidad certificar la adquisición del bien por S/ 120,000 con cargo a Donaciones y Transferencias?",
+        options: [
+          "Sí, porque el presupuesto anual aprobado es S/ 200,000.",
+          "No, porque solo se ha recibido S/ 50,000 y aún no hay disponibilidad suficiente para cubrir el bien.",
+          "Sí, porque existe un convenio suscrito que garantiza los S/ 200,000.",
+          "Sí, pero solo por el monto transferido de S/ 50,000."
+        ],
+        correct: 1,
+        correctDecision: "No certificar S/ 120,000",
+        feedback: "El presupuesto anual y el convenio sustentan una expectativa de financiamiento, pero la transferencia efectiva acumulada solo asciende a S/ 50,000. Certificar S/ 120,000 en este momento genera riesgo de desfinanciamiento si las siguientes remesas no se concretan. Si se requiere avanzar, debe evaluarse certificar solo aquello que esté cubierto por crédito y disponibilidad efectiva, o reprogramar la adquisición."
+      },
+      {
+        name: "Segundo trimestre",
+        expected: 50000,
+        received: 50000,
+        accumulated: 100000,
+        state: "warning",
+        situation: "Llega el segundo trimestre y el cooperante internacional transfiere la segunda remesa de S/ 50,000.",
+        question: "¿Puede la entidad certificar ahora el bien por S/ 120,000?",
+        options: [
+          "Sí, porque ya se han recibido dos remesas y falta poco para cubrir el bien.",
+          "No, porque el acumulado recibido es S/ 100,000 y aún no alcanza los S/ 120,000 requeridos.",
+          "Sí, porque el tercer trimestre está próximo y se espera otra transferencia.",
+          "Sí, porque el presupuesto institucional sigue registrando S/ 200,000."
+        ],
+        correct: 1,
+        correctDecision: "No certificar S/ 120,000",
+        feedback: "La entidad todavía no cuenta con recursos efectivamente percibidos suficientes para respaldar la certificación total de S/ 120,000. La cercanía de una futura remesa no acredita disponibilidad. La Oficina de Presupuesto debe coordinar con Tesorería y verificar la disponibilidad real antes de certificar el monto completo."
+      },
+      {
+        name: "Tercer trimestre",
+        expected: 50000,
+        received: 0,
+        accumulated: 100000,
+        state: "missed",
+        situation: "Llega el tercer trimestre. Debido a medidas adoptadas por el gobierno del presidente Donald Trump que afectan los fondos de cooperación internacional, el cooperante informa que no cuenta con recursos suficientes y no realiza la transferencia financiera pactada.",
+        question: "Considerando que no llegó la tercera remesa, ¿se justificaría certificar el bien por S/ 120,000?",
+        options: [
+          "Sí, porque el convenio sigue vigente y el presupuesto aprobado es S/ 200,000.",
+          "No, porque la falta de transferencia confirma el riesgo de financiar gasto con recursos no percibidos.",
+          "Sí, porque puede asumirse que el cooperante pagará más adelante.",
+          "Sí, porque ya se recibió la mayor parte del monto requerido."
+        ],
+        correct: 1,
+        correctDecision: "No certificar S/ 120,000",
+        feedback: "Este momento evidencia por qué no debe certificarse con base únicamente en una expectativa de transferencia. Aunque el convenio y el presupuesto anual existan, la tercera remesa no fue percibida. La entidad debe abstenerse de asumir compromisos por encima de la disponibilidad efectiva, ajustar su programación o evaluar fuentes alternativas conforme a la normativa aplicable."
+      },
+      {
+        name: "Diciembre / cierre del año",
+        expected: 50000,
+        received: 50000,
+        accumulated: 150000,
+        state: "received",
+        situation: "Al finalizar diciembre, el cooperante internacional transfiere una nueva remesa de S/ 50,000. El acumulado efectivamente recibido asciende a S/ 150,000.",
+        question: "Con el acumulado efectivamente recibido de S/ 150,000, ¿puede certificarse el bien por S/ 120,000?",
+        options: [
+          "Sí, siempre que exista crédito presupuestario disponible, la fuente esté correctamente registrada y la transferencia haya sido percibida y habilitada presupuestalmente según corresponda.",
+          "No, porque nunca se llegó a recibir el total anual de S/ 200,000.",
+          "Sí, automáticamente, porque el dinero ya ingresó.",
+          "No, porque la transferencia llegó en diciembre y ya no puede usarse bajo ningún supuesto."
+        ],
+        correct: 0,
+        correctDecision: "Sí, condicionado",
+        feedback: "Ahora el acumulado percibido asciende a S/ 150,000, suficiente para cubrir el bien de S/ 120,000. Sin embargo, la certificación no es automática: debe verificarse el crédito presupuestario disponible, la correcta clasificación en Donaciones y Transferencias, el registro de la percepción, la habilitación o incorporación presupuestaria si corresponde, y la posibilidad de ejecutar el gasto dentro de los plazos del ejercicio fiscal."
+      }
+    ];
+
+    let current = 0;
+    let score = 0;
+    let answered = false;
+    const answers = [];
+
+    function money(value) {
+      return "S/ " + Number(value).toLocaleString("es-PE");
+    }
+
+    function showScreen(id) {
+      ["startScreen", "simScreen", "resultScreen"].forEach(screenId => {
+        document.getElementById(screenId).classList.toggle("active", screenId === id);
+      });
+    }
+
+    function startSimulator() {
+      current = 0;
+      score = 0;
+      answered = false;
+      answers.length = 0;
+      showScreen("simScreen");
+      renderMoment();
+    }
+
+    function renderMoment() {
+      const item = moments[current];
+      answered = false;
+      document.getElementById("momentBadge").textContent = item.name;
+      document.getElementById("statusBadge").textContent = item.state === "missed" ? "Transferencia no recibida" : "Trimestre actual";
+      document.getElementById("scoreText").textContent = score;
+      document.getElementById("yearBar").style.width = ((current + 1) / moments.length * 100) + "%";
+      document.getElementById("receivedText").textContent = money(item.accumulated);
+      renderAvailability(item.accumulated);
+      renderTimeline();
+      renderQuestion(item);
+    }
+
+    function renderAvailability(accumulated) {
+      const difference = accumulated - assetAmount;
+      const percent = Math.min(100, Math.round(accumulated / assetAmount * 100));
+      document.getElementById("availabilityBar").style.width = percent + "%";
+      if (difference < 0) {
+        document.getElementById("gapText").textContent = "Brecha frente al bien: " + money(Math.abs(difference));
+      } else {
+        document.getElementById("gapText").textContent = "Exceso respecto al bien: " + money(difference);
+      }
+    }
+
+    function renderTimeline() {
+      const box = document.getElementById("timeline");
+      box.innerHTML = "";
+      moments.forEach((item, index) => {
+        const card = document.createElement("div");
+        let cls = "quarter pending";
+        if (index < current) cls = "quarter " + item.state;
+        if (index === current) cls = "quarter current";
+        card.className = cls;
+        const stateText = index < current ? "Completado" : index === current ? "Actual" : "Pendiente";
+        card.innerHTML = `
+          <h3>${item.name}</h3>
+          <p><strong>Programado:</strong> ${money(item.expected)}</p>
+          <p><strong>Transferido:</strong> ${money(item.received)}</p>
+          <p><strong>Acumulado:</strong> ${money(item.accumulated)}</p>
+          <p><strong>Estado:</strong> ${stateText}</p>
+          <p><strong>Resultado:</strong> ${answers[index] || "-"}</p>
+        `;
+        box.appendChild(card);
+      });
+    }
+
+    function renderQuestion(item) {
+      document.getElementById("momentTitle").textContent = item.name;
+      document.getElementById("momentSituation").textContent = item.situation;
+      document.getElementById("momentQuestion").textContent = item.question;
+      const difference = item.accumulated - assetAmount;
+      const brecha = difference < 0 ? "Brecha frente al bien: " + money(Math.abs(difference)) : "Exceso respecto al bien: " + money(difference);
+      document.getElementById("visibleData").innerHTML = `
+        Programado del momento: <strong>${money(item.expected)}</strong><br>
+        Transferido en el momento: <strong>${money(item.received)}</strong><br>
+        Acumulado recibido: <strong>${money(item.accumulated)}</strong><br>
+        Bien requerido: <strong>${money(assetAmount)}</strong><br>
+        ${brecha}
+      `;
+      const options = document.getElementById("optionsBox");
+      options.innerHTML = "";
+      item.options.forEach((label, index) => {
+        const button = document.createElement("button");
+        button.className = "option";
+        button.type = "button";
+        button.textContent = String.fromCharCode(65 + index) + ". " + label;
+        button.onclick = () => chooseAnswer(index, button);
+        options.appendChild(button);
+      });
+      document.getElementById("feedbackBox").className = "feedback";
+      document.getElementById("feedbackBox").innerHTML = "";
+      document.getElementById("nextButton").disabled = true;
+      document.getElementById("nextButton").textContent = current === moments.length - 1 ? "Ver resultado" : "Siguiente trimestre";
+    }
+
+    function chooseAnswer(index, button) {
+      if (answered) return;
+      answered = true;
+      const item = moments[current];
+      const isCorrect = index === item.correct;
+      document.querySelectorAll(".option").forEach(option => option.disabled = true);
+      button.classList.add(isCorrect ? "correct" : "incorrect");
+      if (isCorrect) score += 1;
+      answers[current] = isCorrect ? "Correcto" : "Incorrecto";
+      if (!isCorrect) markCurrentWrong();
+      showFeedback(isCorrect, item);
+      document.getElementById("scoreText").textContent = score;
+      document.getElementById("nextButton").disabled = false;
+    }
+
+    function markCurrentWrong() {
+      const cards = document.querySelectorAll(".quarter");
+      if (cards[current]) cards[current].className = "quarter wrong";
+    }
+
+    function showFeedback(isCorrect, item) {
+      const box = document.getElementById("feedbackBox");
+      box.className = "feedback show " + (isCorrect ? "ok" : "bad");
+      box.innerHTML = `
+        <strong>${isCorrect ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
+        <p>${item.feedback}</p>
+        <p><strong>Frase clave:</strong> ${keyPhrase(item)}</p>
+      `;
+    }
+
+    function keyPhrase(item) {
+      if (item.accumulated < assetAmount) return "No se debe comprometer gasto si la fuente específica no cuenta con disponibilidad suficiente.";
+      return "La percepción efectiva reduce el riesgo de desfinanciamiento.";
+    }
+
+    function nextMoment() {
+      if (!answered) return;
+      current += 1;
+      if (current >= moments.length) {
+        renderResults();
+        showScreen("resultScreen");
+        return;
+      }
+      renderMoment();
+    }
+
+    function renderResults() {
+      const percent = Math.round(score / moments.length * 100);
+      document.getElementById("finalScore").textContent = score;
+      document.getElementById("finalPercent").textContent = "Porcentaje de aciertos: " + percent + "%";
+      let performance = "Requiere repasar ejecución de ingresos y certificación.";
+      if (score === 4) performance = "Excelente criterio presupuestario.";
+      else if (score === 3) performance = "Buen criterio, revisar casos límite.";
+      else if (score === 2) performance = "Requiere reforzar disponibilidad y percepción.";
+      document.getElementById("performanceText").textContent = "Nivel de desempeño: " + performance;
+
+      const rows = document.getElementById("summaryRows");
+      rows.innerHTML = "";
+      moments.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td>${money(item.expected)}</td>
+          <td>${money(item.received)}</td>
+          <td>${money(item.accumulated)}</td>
+          <td>${item.correctDecision}</td>
+        `;
+        rows.appendChild(tr);
+      });
+    }
+
+    function resetSimulator() {
+      current = 0;
+      score = 0;
+      answered = false;
+      answers.length = 0;
+      document.getElementById("yearBar").style.width = "0";
+      showScreen("startScreen");
+    }
+  </script>
+</body>
+</html>

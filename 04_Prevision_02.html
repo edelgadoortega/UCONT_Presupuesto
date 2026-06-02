@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Previsión Presupuestaria en Procedimientos Convocados al Cierre del Año Fiscal</title>
+  <style>
+    :root {
+      --azul: #1d4ed8;
+      --azul-oscuro: #1e3a8a;
+      --azul-suave: #dbeafe;
+      --turquesa: #0f766e;
+      --turquesa-suave: #ccfbf1;
+      --verde: #15803d;
+      --verde-suave: #dcfce7;
+      --amarillo: #a16207;
+      --amarillo-suave: #fef3c7;
+      --rojo: #b91c1c;
+      --rojo-suave: #fee2e2;
+      --gris: #64748b;
+      --gris-suave: #f1f5f9;
+      --texto: #0f172a;
+      --borde: #dbe3ef;
+      --sombra: 0 18px 45px rgba(15, 23, 42, 0.12);
+      --radio: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--texto);
+      background: #eef4ff;
+    }
+
+    header {
+      background: linear-gradient(135deg, #12326f, var(--azul));
+      color: white;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.45rem, 3vw, 2.45rem);
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 960px;
+      margin: 10px auto 0;
+      line-height: 1.5;
+      opacity: 0.96;
+    }
+
+    main {
+      width: min(1220px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+
+    h2, h3 { margin-top: 0; letter-spacing: 0; }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .screen.active { display: block; }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: var(--radio);
+      box-shadow: var(--sombra);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .small {
+      color: #475569;
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .col-8 { grid-column: span 8; }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+
+    @media (max-width: 900px) {
+      .col-8, .col-6, .col-4 { grid-column: span 12; }
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 900px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .facts { grid-template-columns: 1fr; } }
+
+    .fact, .metric {
+      background: #f8fafc;
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 84px;
+    }
+
+    .fact span, .metric span {
+      display: block;
+      color: var(--gris);
+      font-size: 0.82rem;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .fact strong, .metric strong {
+      display: block;
+      color: var(--azul-oscuro);
+      font-size: 1.05rem;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .btn-primary { background: var(--azul); color: white; }
+    .btn-secondary { background: #e2e8f0; color: var(--texto); }
+    .btn-success { background: var(--verde); color: white; }
+
+    .norm-list {
+      margin: 0;
+      padding-left: 20px;
+      line-height: 1.6;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #e0f2fe;
+      color: #075985;
+      font-weight: 900;
+      font-size: 0.84rem;
+      margin: 3px;
+    }
+
+    .score {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #eff6ff;
+      color: var(--azul-oscuro);
+      border: 1px solid #bfdbfe;
+      font-weight: 900;
+    }
+
+    .progress {
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0 16px;
+    }
+
+    .progress > div {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--azul), var(--turquesa));
+      transition: width 0.3s ease;
+    }
+
+    .lanes {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .lane {
+      border: 1px solid var(--borde);
+      border-radius: 14px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .lane-title {
+      padding: 10px 14px;
+      color: white;
+      font-weight: 900;
+    }
+
+    .lane.t .lane-title { background: var(--azul); }
+    .lane.t1 .lane-title { background: var(--turquesa); }
+
+    .lane-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 8px;
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 760px) {
+      .lane-flow { grid-template-columns: 1fr; }
+    }
+
+    .step-wrap {
+      display: grid;
+      grid-template-columns: 1fr 24px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .step-wrap:last-child { grid-template-columns: 1fr; }
+
+    .step {
+      min-height: 112px;
+      border: 2px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 13px;
+      padding: 12px;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .step strong { display: block; margin-bottom: 6px; }
+    .step span { display: block; color: #475569; font-size: 0.86rem; line-height: 1.35; }
+
+    .step.pending { background: #f8fafc; border-color: #cbd5e1; }
+    .step.current-t { background: var(--azul-suave); border-color: var(--azul); transform: translateY(-2px); }
+    .step.current-t1 { background: var(--turquesa-suave); border-color: var(--turquesa); transform: translateY(-2px); }
+    .step.done { background: var(--verde-suave); border-color: #22c55e; }
+    .step.bad { background: var(--rojo-suave); border-color: #ef4444; }
+
+    .arrow {
+      align-self: center;
+      color: var(--azul);
+      font-weight: 900;
+      font-size: 1.35rem;
+      text-align: center;
+      animation: pulseArrow 1.2s ease-in-out infinite;
+    }
+
+    .t1 .arrow { color: var(--turquesa); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 980px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .metrics { grid-template-columns: 1fr; } }
+
+    .case-box {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .options {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .option {
+      width: 100%;
+      text-align: left;
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: var(--texto);
+      border-radius: 12px;
+      padding: 14px 16px;
+      line-height: 1.35;
+    }
+
+    .option:hover { border-color: var(--azul); background: #eff6ff; }
+    .option.correct { background: var(--verde-suave); color: #14532d; border-color: #22c55e; }
+    .option.incorrect { background: var(--rojo-suave); color: #7f1d1d; border-color: #ef4444; }
+
+    .feedback {
+      display: none;
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+      line-height: 1.55;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .feedback.show { display: block; }
+    .feedback.ok { background: var(--verde-suave); border: 1px solid #86efac; color: #14532d; }
+    .feedback.bad { background: var(--rojo-suave); border: 1px solid #fecaca; color: #7f1d1d; }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    .summary-table th, .summary-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 11px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .summary-table th { background: #eff6ff; color: var(--azul-oscuro); }
+
+    .conclusion {
+      background: #f8fafc;
+      border-left: 5px solid var(--turquesa);
+      border-radius: 12px;
+      padding: 16px;
+      line-height: 1.55;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulseArrow {
+      0%, 100% { opacity: 0.45; transform: translateX(0); }
+      50% { opacity: 1; transform: translateX(3px); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulador de Previsión Presupuestaria en Procedimientos Convocados al Cierre del Año Fiscal</h1>
+    <p>Del requerimiento en el año t al compromiso anual en el año t+1</p>
+  </header>
+
+  <main>
+    <section id="startScreen" class="screen active">
+      <div class="panel">
+        <h2>Caso de aprendizaje</h2>
+        <p class="small">
+          Una entidad pública del Gobierno Nacional requiere adquirir estaciones acelerométricas para fortalecer
+          la red nacional de monitoreo geofísico. El requerimiento se formula en octubre de 2026 y la convocatoria
+          se realizará en noviembre, pero la buena pro, contrato, entrega y pago se producirán en 2027.
+        </p>
+        <div class="facts">
+          <div class="fact"><span>Bien requerido</span><strong>8 estaciones acelerométricas</strong></div>
+          <div class="fact"><span>Valor estimado</span><strong>S/ 640,000</strong></div>
+          <div class="fact"><span>Fuente</span><strong>Recursos Ordinarios</strong></div>
+          <div class="fact"><span>Ejecución 2027</span><strong>S/ 640,000</strong></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="startSimulator()">Iniciar simulador</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Recordatorio normativo</h2>
+        <ul class="norm-list small">
+          <li>La certificación de crédito presupuestario - CCP garantiza crédito disponible y libre de afectación para comprometer gasto con cargo al presupuesto institucional autorizado para el año fiscal respectivo, en función a la PCA.</li>
+          <li>La certificación es requisito indispensable cada vez que se prevea realizar un gasto, suscribir contrato o adquirir compromiso.</li>
+          <li>En procedimientos convocados en el último trimestre, cuando la buena pro y la suscripción del contrato se realizan en el siguiente año fiscal, debe emitirse previsión presupuestaria antes de la convocatoria.</li>
+          <li>La previsión presupuestaria respalda recursos para el año fiscal siguiente, pero no reemplaza al CCP del año fiscal t+1.</li>
+          <li>Durante los primeros 30 días hábiles del año fiscal t+1 debe realizarse el canje de la previsión por el CCP correspondiente, verificando disponibilidad presupuestaria.</li>
+          <li>El compromiso anual se registra en t+1 por el monto contractual correspondiente, una vez emitido el CCP y perfeccionado el contrato.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="simScreen" class="screen">
+      <div class="panel">
+        <div class="topline">
+          <div>
+            <span class="badge" id="stageBadge">Etapa 1 de 8</span>
+            <span class="badge">Estaciones acelerométricas</span>
+          </div>
+          <div class="score">Puntaje: <span id="scoreText">0</span>/8</div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+
+        <div class="lanes">
+          <div class="lane t">
+            <div class="lane-title">Año 2026 = t</div>
+            <div class="lane-flow" id="laneT"></div>
+          </div>
+          <div class="lane t1">
+            <div class="lane-title">Año 2027 = t+1</div>
+            <div class="lane-flow" id="laneT1"></div>
+          </div>
+        </div>
+
+        <div class="metrics" id="metrics"></div>
+      </div>
+
+      <div class="panel">
+        <div class="grid">
+          <div class="col-8">
+            <div class="case-box">
+              <h2 id="stageTitle">Etapa</h2>
+              <p id="narrative" class="small"></p>
+              <h3 id="question"></h3>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="case-box">
+              <h3>Datos visibles</h3>
+              <p id="visibleData" class="small"></p>
+            </div>
+          </div>
+        </div>
+
+        <div id="optionsBox" class="options"></div>
+        <div id="feedbackBox" class="feedback" aria-live="polite"></div>
+        <div class="btn-row">
+          <button id="nextButton" class="btn-success" onclick="nextStage()" disabled>Siguiente paso</button>
+          <button class="btn-secondary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="panel">
+        <h2>Resultado del estudiante</h2>
+        <p class="score">Puntaje obtenido: <span id="finalScore">0</span>/8</p>
+        <p class="small" id="finalPercent"></p>
+        <p class="small" id="performanceText"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Tabla resumen final</h2>
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Fase</th>
+              <th>Año fiscal</th>
+              <th>Documento / acción</th>
+              <th>Monto</th>
+              <th>Decisión correcta</th>
+            </tr>
+          </thead>
+          <tbody id="summaryRows"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>Conclusión pedagógica</h2>
+        <div class="conclusion">
+          Cuando un procedimiento de selección se convoca en el último trimestre del año fiscal y la buena pro y
+          suscripción del contrato se realizarán en el siguiente ejercicio, la entidad debe contar con previsión
+          presupuestaria antes de la convocatoria. En el año fiscal siguiente, la previsión debe canjearse por el CCP
+          correspondiente dentro del plazo normativo. Solo después de contar con el CCP y perfeccionado el contrato
+          corresponde registrar el compromiso anual.
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const laneT = [
+      ["Requerimiento", "Octubre 2026"],
+      ["Estudio de mercado", "Valor estimado"],
+      ["Previsión presupuestaria 2027", "S/ 640,000"],
+      ["Convocatoria del procedimiento", "Noviembre 2026"]
+    ];
+
+    const laneT1 = [
+      ["Inicio del ejercicio fiscal", "Enero 2027"],
+      ["Canje previsión por CCP", "S/ 640,000"],
+      ["Buena pro y contrato", "S/ 640,000"],
+      ["Compromiso anual", "S/ 640,000"]
+    ];
+
+    const metricsBase = [
+      ["Año t", "2026"],
+      ["Año t+1", "2027"],
+      ["Valor estimado", "S/ 640,000"],
+      ["Previsión presupuestaria t+1", "Pendiente"],
+      ["CCP 2026", "S/ 0"],
+      ["CCP 2027", "Pendiente"],
+      ["Compromiso anual 2026", "S/ 0"],
+      ["Compromiso anual 2027", "Pendiente"],
+      ["Recursos previstos 2027", "S/ 660,000"],
+      ["Crédito disponible 2027", "S/ 650,000"],
+      ["PCA disponible 2027", "S/ 645,000"],
+      ["Fuente de financiamiento", "Recursos Ordinarios"]
+    ];
+
+    const stages = [
+      {
+        title: "Etapa 1: Requerimiento del área usuaria",
+        lane: "t",
+        node: 0,
+        narrative: "En octubre de 2026, la Dirección de Monitoreo Sísmico solicita adquirir 8 estaciones acelerométricas para fortalecer la red nacional de monitoreo. La necesidad es urgente, pero el procedimiento se convocará en noviembre y se prevé que el contrato se suscriba recién en enero de 2027.",
+        question: "¿Qué debe advertir el área usuaria y el OEC antes de continuar?",
+        visible: "Monto a ejecutar en 2026: S/ 0. Monto a ejecutar en 2027: S/ 640,000.",
+        options: [
+          "Que debe registrarse el compromiso anual 2026 por S/ 640,000.",
+          "Que el procedimiento iniciará en el último trimestre de 2026, pero la buena pro y contrato se realizarán en 2027.",
+          "Que no se requiere sustento presupuestario porque el pago será el próximo año.",
+          "Que se debe emitir devengado antes de la convocatoria."
+        ],
+        correct: 1,
+        feedback: "Correcto. Al convocarse en el último trimestre y preverse que la buena pro y el contrato se realizarán en el siguiente año fiscal, debe evaluarse la emisión de previsión presupuestaria para el año t+1."
+      },
+      {
+        title: "Etapa 2: Estudio de mercado",
+        lane: "t",
+        node: 1,
+        narrative: "El OEC realiza el estudio de mercado. Se determina que cada estación acelerométrica tiene un costo estimado de S/ 80,000. El valor estimado total asciende a S/ 640,000.",
+        question: "¿Para qué sirve este valor estimado en la secuencia presupuestaria?",
+        visible: "Cantidad: 8 equipos. Costo unitario: S/ 80,000. Valor estimado total: S/ 640,000.",
+        options: [
+          "Para sustentar el monto de la previsión presupuestaria para el año 2027.",
+          "Para registrar compromiso anual 2026.",
+          "Para registrar el devengado 2026.",
+          "Para evitar la intervención de la Oficina de Presupuesto."
+        ],
+        correct: 0,
+        feedback: "Correcto. El valor estimado es la base para solicitar la previsión presupuestaria, ya que la obligación contractual y la ejecución presupuestal se producirán en 2027."
+      },
+      {
+        title: "Etapa 3: Previsión presupuestaria para t+1",
+        lane: "t",
+        node: 2,
+        unlock: "prevision",
+        narrative: "La Oficina de Presupuesto evalúa la solicitud de previsión antes de la convocatoria.",
+        question: "¿Puede emitirse la previsión presupuestaria para 2027 por S/ 640,000?",
+        visible: "Valor estimado: S/ 640,000. Recursos previstos 2027: S/ 660,000. Monto a ejecutar en 2026: S/ 0. Monto a ejecutar en 2027: S/ 640,000.",
+        options: [
+          "Sí, porque el valor estimado está sustentado y existen recursos previstos suficientes para 2027.",
+          "No, porque aún no existe contrato.",
+          "Sí, pero por S/ 660,000, porque ese es el monto previsto en el presupuesto.",
+          "No, porque siempre se requiere CCP del año 2026."
+        ],
+        correct: 0,
+        feedback: "Correcto. La previsión presupuestaria debe emitirse por el valor estimado de la contratación, siempre que existan recursos previstos suficientes para el año fiscal siguiente. No debe emitirse por un monto mayor sin sustento."
+      },
+      {
+        title: "Etapa 4: Convocatoria / proceso de contratación en año t",
+        lane: "t",
+        node: 3,
+        narrative: "En noviembre de 2026, la entidad convoca el procedimiento de selección por S/ 640,000, adjuntando la previsión presupuestaria para 2027.",
+        question: "¿Corresponde registrar compromiso anual en el año 2026?",
+        visible: "Convocatoria prevista: noviembre de 2026. Buena pro y contrato: enero de 2027. Ejecución 2026: S/ 0.",
+        options: [
+          "Sí, porque ya se convocó el procedimiento.",
+          "Sí, porque existe previsión presupuestaria.",
+          "No, porque la buena pro, contrato y ejecución presupuestal se realizarán en 2027.",
+          "Sí, por el 50% del valor estimado."
+        ],
+        correct: 2,
+        feedback: "Correcto. La convocatoria no genera por sí misma un compromiso anual. La previsión permite convocar, pero el compromiso se registrará en 2027, luego del CCP y del contrato."
+      },
+      {
+        title: "Etapa 5: Inicio del año fiscal t+1",
+        lane: "t1",
+        node: 0,
+        narrative: "Inicia el año fiscal 2027. La entidad cuenta con una previsión presupuestaria emitida en 2026 por S/ 640,000 para la adquisición.",
+        question: "¿Qué debe hacer la entidad al iniciar el ejercicio fiscal 2027?",
+        visible: "Plazo para canje: primeros 30 días hábiles del año fiscal 2027.",
+        options: [
+          "Registrar directamente el compromiso anual usando la previsión.",
+          "Gestionar el canje de la previsión presupuestaria por el CCP 2027 dentro de los primeros 30 días hábiles.",
+          "Anular el procedimiento por haber cambiado el año fiscal.",
+          "Registrar el devengado antes de la buena pro."
+        ],
+        correct: 1,
+        feedback: "Correcto. La previsión no reemplaza al CCP del año fiscal siguiente. Debe emitirse la certificación de crédito presupuestario en 2027 respecto de la previsión emitida."
+      },
+      {
+        title: "Etapa 6: Canje de previsión por CCP",
+        lane: "t1",
+        node: 1,
+        unlock: "ccp2027",
+        narrative: "La Oficina de Presupuesto verifica la disponibilidad para emitir el CCP 2027 respecto de la previsión emitida.",
+        question: "¿Puede emitirse el CCP 2027 por S/ 640,000?",
+        visible: "Previsión emitida en 2026: S/ 640,000. Crédito presupuestario disponible 2027: S/ 650,000. PCA disponible 2027: S/ 645,000. Monto requerido: S/ 640,000.",
+        options: [
+          "Sí, porque el monto requerido cuenta con crédito presupuestario y PCA suficiente en 2027.",
+          "No, porque la previsión se emitió en el año anterior.",
+          "Sí, pero solo por S/ 645,000.",
+          "No, porque debe emitirse un CCP por S/ 660,000."
+        ],
+        correct: 0,
+        feedback: "Correcto. El canje procede porque el monto de S/ 640,000 cuenta con crédito presupuestario disponible y PCA suficiente en 2027."
+      },
+      {
+        title: "Etapa 7: Buena pro y contrato",
+        lane: "t1",
+        node: 2,
+        narrative: "En enero de 2027 se otorga la buena pro y se suscribe el contrato por S/ 640,000. El contrato queda registrado para su ejecución durante 2027.",
+        question: "¿Qué condición presupuestaria debe haberse cumplido antes de suscribir el contrato o adquirir el compromiso?",
+        visible: "La previsión permitió convocar en 2026, pero en 2027 debe existir CCP antes del contrato o compromiso.",
+        options: [
+          "Debe haberse emitido el CCP 2027.",
+          "Debe haberse registrado el devengado.",
+          "Debe haberse agotado la PCA.",
+          "Debe haberse anulado la previsión."
+        ],
+        correct: 0,
+        feedback: "Correcto. La certificación es requisito previo para suscribir contrato o adquirir compromiso. La previsión permitió la convocatoria, pero en 2027 debe existir CCP."
+      },
+      {
+        title: "Etapa 8: Compromiso anual 2027",
+        lane: "t1",
+        node: 3,
+        unlock: "commitment2027",
+        narrative: "Emitido el CCP 2027 y suscrito el contrato por S/ 640,000, corresponde registrar el compromiso anual.",
+        question: "¿Cuál es el monto correcto del compromiso anual 2027?",
+        visible: "Contrato 2027: S/ 640,000. CCP 2027: S/ 640,000. Compromiso anual 2026: S/ 0.",
+        options: [
+          "S/ 0, porque la previsión fue emitida en 2026.",
+          "S/ 640,000, porque corresponde al monto contractual del año fiscal 2027.",
+          "S/ 660,000, porque ese era el monto previsto en el presupuesto 2027.",
+          "S/ 1,280,000, porque se suma previsión y CCP."
+        ],
+        correct: 1,
+        feedback: "Correcto. El compromiso anual se registra por el monto contractual correspondiente al año fiscal 2027, con cargo al CCP emitido en dicho ejercicio. La previsión no se suma al CCP; se canjea por este."
+      }
+    ];
+
+    const summary = [
+      ["Requerimiento", "2026", "Necesidad de bienes", "S/ 640,000", "Identificar ejecución en t+1"],
+      ["Estudio de mercado", "2026", "Valor estimado", "S/ 640,000", "Sustenta previsión"],
+      ["Previsión", "2026", "Previsión presupuestaria 2027", "S/ 640,000", "Emitir antes de convocatoria"],
+      ["Convocatoria", "2026", "Procedimiento de selección", "S/ 640,000", "No comprometer en 2026"],
+      ["Inicio de año", "2027", "Nuevo ejercicio fiscal", "-", "Gestionar canje"],
+      ["Canje", "2027", "CCP 2027", "S/ 640,000", "Emitir CCP"],
+      ["Contrato", "2027", "Buena pro y contrato", "S/ 640,000", "Verificar CCP previo"],
+      ["Compromiso", "2027", "Compromiso anual", "S/ 640,000", "Registrar por monto contractual"]
+    ];
+
+    let current = 0;
+    let score = 0;
+    let answered = false;
+    const unlocked = { prevision: false, ccp2027: false, commitment2027: false };
+
+    function showScreen(id) {
+      ["startScreen", "simScreen", "resultScreen"].forEach(screenId => {
+        document.getElementById(screenId).classList.toggle("active", screenId === id);
+      });
+    }
+
+    function startSimulator() {
+      current = 0;
+      score = 0;
+      answered = false;
+      unlocked.prevision = false;
+      unlocked.ccp2027 = false;
+      unlocked.commitment2027 = false;
+      showScreen("simScreen");
+      renderStage();
+    }
+
+    function renderMetrics() {
+      const values = metricsBase.map(item => [...item]);
+      if (unlocked.prevision) values[3][1] = "S/ 640,000";
+      if (unlocked.ccp2027) values[5][1] = "S/ 640,000";
+      if (unlocked.commitment2027) values[7][1] = "S/ 640,000";
+
+      document.getElementById("metrics").innerHTML = values.map(item => `
+        <div class="metric"><span>${item[0]}</span><strong>${item[1]}</strong></div>
+      `).join("");
+    }
+
+    function renderLane(containerId, items, laneName) {
+      const stage = stages[current];
+      document.getElementById(containerId).innerHTML = items.map((item, index) => {
+        let cls = "pending";
+        if (isDone(laneName, index)) cls = "done";
+        if (stage.lane === laneName && stage.node === index) cls = laneName === "t" ? "current-t" : "current-t1";
+        const arrow = index < items.length - 1 ? '<div class="arrow">→</div>' : "";
+        return `
+          <div class="step-wrap">
+            <div class="step ${cls}"><strong>${item[0]}</strong><span>${item[1]}</span></div>
+            ${arrow}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function isDone(lane, index) {
+      for (let i = 0; i < current; i++) {
+        const stage = stages[i];
+        if (stage.lane === lane && stage.node >= index) return true;
+      }
+      return false;
+    }
+
+    function renderStage() {
+      const stage = stages[current];
+      answered = false;
+      document.getElementById("stageBadge").textContent = "Etapa " + (current + 1) + " de " + stages.length;
+      document.getElementById("scoreText").textContent = score;
+      document.getElementById("progressBar").style.width = (current / stages.length * 100) + "%";
+      document.getElementById("stageTitle").textContent = stage.title;
+      document.getElementById("narrative").textContent = stage.narrative;
+      document.getElementById("question").textContent = stage.question;
+      document.getElementById("visibleData").textContent = stage.visible;
+      renderMetrics();
+      renderLane("laneT", laneT, "t");
+      renderLane("laneT1", laneT1, "t1");
+
+      const optionsBox = document.getElementById("optionsBox");
+      optionsBox.innerHTML = "";
+      stage.options.forEach((option, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "option";
+        button.textContent = String.fromCharCode(65 + index) + ". " + option;
+        button.onclick = () => answer(index, button);
+        optionsBox.appendChild(button);
+      });
+
+      document.getElementById("feedbackBox").className = "feedback";
+      document.getElementById("feedbackBox").innerHTML = "";
+      document.getElementById("nextButton").disabled = true;
+      document.getElementById("nextButton").textContent = current === stages.length - 1 ? "Ver resultado" : "Siguiente paso";
+    }
+
+    function answer(index, button) {
+      if (answered) return;
+      answered = true;
+      const stage = stages[current];
+      const correct = index === stage.correct;
+      document.querySelectorAll(".option").forEach(option => option.disabled = true);
+      button.classList.add(correct ? "correct" : "incorrect");
+      if (correct) score += 1;
+      if (correct && stage.unlock) unlocked[stage.unlock] = true;
+
+      document.getElementById("scoreText").textContent = score;
+      renderMetrics();
+      const feedback = document.getElementById("feedbackBox");
+      feedback.className = "feedback show " + (correct ? "ok" : "bad");
+      feedback.innerHTML = `<strong>${correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong><p>${stage.feedback}</p>`;
+      document.getElementById("nextButton").disabled = false;
+    }
+
+    function nextStage() {
+      if (!answered) return;
+      current += 1;
+      if (current >= stages.length) {
+        renderResults();
+        showScreen("resultScreen");
+        return;
+      }
+      renderStage();
+    }
+
+    function renderResults() {
+      const percent = Math.round(score / stages.length * 100);
+      document.getElementById("finalScore").textContent = score;
+      document.getElementById("finalPercent").textContent = "Porcentaje de aciertos: " + percent + "%";
+      let level = "Requiere repasar la secuencia presupuestaria completa.";
+      if (score === 8) level = "Excelente dominio del uso de previsión presupuestaria.";
+      else if (score >= 6) level = "Buen criterio, revisar canje y compromiso.";
+      else if (score >= 4) level = "Requiere reforzar diferencia entre previsión, CCP y compromiso.";
+      document.getElementById("performanceText").textContent = "Nivel de desempeño: " + level;
+      document.getElementById("summaryRows").innerHTML = summary.map(row => `
+        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td></tr>
+      `).join("");
+    }
+
+    function resetSimulator() {
+      startSimulator();
+    }
+  </script>
+</body>
+</html>

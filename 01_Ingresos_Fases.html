@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Ejecución de Ingresos Públicos</title>
+  <style>
+    :root {
+      --azul: #1d4ed8;
+      --azul-oscuro: #1e3a8a;
+      --verde: #15803d;
+      --verde-suave: #dcfce7;
+      --amarillo: #b7791f;
+      --amarillo-suave: #fef3c7;
+      --rojo: #b91c1c;
+      --rojo-suave: #fee2e2;
+      --gris: #64748b;
+      --gris-fondo: #f1f5f9;
+      --gris-claro: #f8fafc;
+      --texto: #0f172a;
+      --borde: #dbe3ef;
+      --sombra: 0 18px 42px rgba(15, 23, 42, 0.12);
+      --radio: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #eef4ff;
+      color: var(--texto);
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f2f6b, var(--azul));
+      color: #ffffff;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.7rem, 3vw, 2.7rem);
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 900px;
+      margin: 10px auto 0;
+      line-height: 1.55;
+      opacity: 0.96;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.28s ease;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .panel {
+      background: #ffffff;
+      border: 1px solid var(--borde);
+      border-radius: var(--radio);
+      box-shadow: var(--sombra);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .col-8 { grid-column: span 8; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-12 { grid-column: span 12; }
+
+    @media (max-width: 860px) {
+      .col-8, .col-6, .col-4 { grid-column: span 12; }
+    }
+
+    h2, h3 {
+      margin-top: 0;
+      letter-spacing: 0;
+    }
+
+    .small {
+      color: #475569;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .stage-intro {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 760px) {
+      .stage-intro {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stage-card {
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      background: var(--gris-claro);
+      padding: 14px;
+      min-height: 128px;
+    }
+
+    .stage-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--azul-oscuro);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .score {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef6ff;
+      color: var(--azul-oscuro);
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-weight: 800;
+    }
+
+    .general-progress {
+      width: 100%;
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0 18px;
+    }
+
+    .general-progress > div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--azul), #22c55e);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+
+    .stage-line {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 700px) {
+      .stage-line {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stage-step {
+      border: 2px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 112px;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stage-step strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .stage-step.gray {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .stage-step.yellow {
+      background: var(--amarillo-suave);
+      border-color: #f59e0b;
+    }
+
+    .stage-step.green {
+      background: var(--verde-suave);
+      border-color: #22c55e;
+    }
+
+    .stage-step.red {
+      background: var(--rojo-suave);
+      border-color: #ef4444;
+    }
+
+    .stage-step.active {
+      transform: translateY(-2px);
+    }
+
+    .case-box {
+      border: 1px dashed #cbd5e1;
+      background: var(--gris-claro);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .amount {
+      color: var(--azul-oscuro);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .option-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .option-button {
+      width: 100%;
+      text-align: left;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background: #ffffff;
+      color: var(--texto);
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .option-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--azul);
+      background: #eff6ff;
+    }
+
+    .option-button.selected {
+      border-color: var(--azul);
+      background: #dbeafe;
+    }
+
+    .option-button.correct {
+      border-color: #22c55e;
+      background: var(--verde-suave);
+      color: #14532d;
+    }
+
+    .option-button.incorrect {
+      border-color: #ef4444;
+      background: var(--rojo-suave);
+      color: #7f1d1d;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+    }
+
+    .btn-primary { background: var(--azul); color: #ffffff; }
+    .btn-secondary { background: #e2e8f0; color: #0f172a; }
+    .btn-success { background: var(--verde); color: #ffffff; }
+
+    .feedback {
+      display: none;
+      border-radius: 14px;
+      padding: 16px;
+      line-height: 1.5;
+      margin-top: 16px;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .feedback.show {
+      display: block;
+    }
+
+    .feedback.ok {
+      background: var(--verde-suave);
+      color: #14532d;
+      border: 1px solid #86efac;
+    }
+
+    .feedback.bad {
+      background: var(--rojo-suave);
+      color: #7f1d1d;
+      border: 1px solid #fecaca;
+    }
+
+    .feedback.warn {
+      background: var(--amarillo-suave);
+      color: #713f12;
+      border: 1px solid #fde68a;
+    }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .feedback-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feedback-item {
+      background: rgba(255, 255, 255, 0.58);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .feedback-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .summary-table th {
+      color: var(--azul-oscuro);
+      background: #eff6ff;
+    }
+
+    .learning-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+      line-height: 1.65;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      font-weight: 900;
+      background: #e0f2fe;
+      color: #075985;
+      margin: 4px 4px 0 0;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulador de Ejecución de Ingresos Públicos</h1>
+    <p>Estimación, Determinación y Percepción/Recaudación</p>
+  </header>
+
+  <main>
+    <section id="startScreen" class="screen active">
+      <div class="panel">
+        <h2>Comprender el ingreso antes de certificar gasto</h2>
+        <p class="small">
+          Este simulador permite practicar decisiones presupuestarias sobre ingresos públicos. El reto es determinar
+          si un ingreso proyectado, determinado o recaudado permite sustentar una certificación presupuestal.
+        </p>
+        <div class="stage-intro">
+          <div class="stage-card">
+            <strong>Estimación</strong>
+            Cálculo o proyección de ingresos esperados durante el año fiscal. Proyecta, pero no acredita disponibilidad efectiva.
+          </div>
+          <div class="stage-card">
+            <strong>Determinación</strong>
+            Identifica concepto, monto, oportunidad y obligado al pago. Reconoce un derecho de cobro, pero no garantiza caja.
+          </div>
+          <div class="stage-card">
+            <strong>Percepción o recaudación</strong>
+            Momento en que se capta u obtiene efectivamente el ingreso. Permite evaluar disponibilidad real, con las verificaciones presupuestarias correspondientes.
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="startSimulator()">Iniciar simulador</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="caseScreen" class="screen">
+      <div class="panel">
+        <div class="topline">
+          <div>
+            <span class="badge" id="caseBadge">Caso 1 de 3</span>
+            <span class="badge" id="stageBadge">Ingreso estimado</span>
+          </div>
+          <div class="score" aria-live="polite">Puntaje: <span id="scoreText">0</span>/100</div>
+        </div>
+        <div class="general-progress" aria-label="Barra de progreso general">
+          <div id="generalProgress"></div>
+        </div>
+
+        <div class="stage-line" aria-label="Línea de progreso de etapas del ingreso">
+          <div id="stepEstimate" class="stage-step gray">
+            <strong>Estimación</strong>
+            <span>Ingreso esperado o proyectado.</span>
+          </div>
+          <div id="stepDetermine" class="stage-step gray">
+            <strong>Determinación</strong>
+            <span>Derecho de cobro identificado.</span>
+          </div>
+          <div id="stepCollect" class="stage-step gray">
+            <strong>Percepción/Recaudación</strong>
+            <span>Ingreso efectivamente captado.</span>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="col-8">
+            <div class="case-box">
+              <h2 id="caseTitle">Caso</h2>
+              <p id="caseNarrative" class="small"></p>
+              <h3 id="caseQuestion"></h3>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="case-box">
+              <h3>Clave de lectura</h3>
+              <p class="small" id="caseHint"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-grid" id="optionsBox" role="group" aria-label="Opciones de decisión"></div>
+        <div id="feedbackBox" class="feedback" aria-live="polite"></div>
+
+        <div class="btn-row">
+          <button id="nextButton" class="btn-success" onclick="nextCase()" disabled>Siguiente caso</button>
+          <button class="btn-secondary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="panel">
+        <h2>Resultado final</h2>
+        <p class="score">Puntaje obtenido: <span id="finalScore">0</span>/100</p>
+        <p class="small" id="finalMessage"></p>
+        <h3>Resumen de aprendizajes</h3>
+        <ul class="learning-list">
+          <li>La estimación proyecta, pero no acredita disponibilidad efectiva.</li>
+          <li>La determinación identifica el derecho de cobro, pero no garantiza caja.</li>
+          <li>La percepción o recaudación acredita el ingreso efectivo.</li>
+          <li>Para certificar se requiere crédito presupuestario disponible y consistencia con la fuente de financiamiento.</li>
+          <li>Si se trata de mayores ingresos, debe verificarse su percepción efectiva y la incorporación presupuestaria conforme a la normativa aplicable.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Tabla comparativa</h2>
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Etapa</th>
+              <th>Qué significa</th>
+              <th>¿Permite certificar?</th>
+              <th>Riesgo de certificar en esa etapa</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Estimación</td>
+              <td>Proyección del ingreso esperado durante el año fiscal.</td>
+              <td>No, por sí sola no permite certificar.</td>
+              <td>Comprometer gasto sobre recursos que podrían no realizarse.</td>
+            </tr>
+            <tr>
+              <td>Determinación</td>
+              <td>Derecho de cobro con concepto, monto, obligado y oportunidad identificados.</td>
+              <td>No necesariamente; debe verificarse percepción efectiva.</td>
+              <td>Generar desfinanciamiento si el obligado no paga.</td>
+            </tr>
+            <tr>
+              <td>Percepción/Recaudación</td>
+              <td>Captación u obtención efectiva del ingreso.</td>
+              <td>Sí, si existe crédito presupuestario disponible e incorporación o habilitación cuando corresponda.</td>
+              <td>Certificar sin clasificación, fuente o habilitación presupuestaria correcta.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="resetSimulator()">Reiniciar simulador</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const cases = [
+      {
+        title: "Caso 1: Ingreso solo estimado",
+        stage: "Estimado",
+        stageIndex: 0,
+        narrative: "Una entidad pública estima que durante el año fiscal recibirá S/ 120,000 por servicios técnicos especializados. La estimación se basa en la recaudación histórica de años anteriores y en la demanda proyectada de usuarios. Sin embargo, aún no se ha emitido documento de cobro, no existe obligado identificado, ni se ha recibido depósito alguno.",
+        question: "¿Puede la entidad certificar presupuesto con cargo a esos S/ 120,000?",
+        hint: "Observe si existe solo una proyección o si ya hay un obligado identificado y recaudación efectiva.",
+        correctOption: "no",
+        options: [
+          { id: "si", label: "Sí, puede certificarse el presupuesto." },
+          { id: "no", label: "No, aún no corresponde certificar." },
+          { id: "esperarDeterminacion", label: "Debe esperarse la determinación del ingreso." },
+          { id: "verificarRecaudacion", label: "Debe verificarse el registro de la recaudación." }
+        ],
+        feedback: {
+          ok: "Correcto. La estimación es solo una proyección de ingresos. No identifica un obligado concreto ni acredita recaudación efectiva.",
+          bad: "La decisión no es prudente. Una proyección de ingresos no acredita disponibilidad efectiva para financiar certificaciones.",
+          stage: "El ingreso se encuentra en estimación.",
+          consequence: "No corresponde certificar con base únicamente en los S/ 120,000 proyectados.",
+          recommendation: "La Oficina de Presupuesto debe verificar crédito presupuestario disponible y, si se trata de mayores ingresos, esperar percepción efectiva e incorporación o habilitación presupuestaria cuando corresponda."
+        }
+      },
+      {
+        title: "Caso 2: Ingreso determinado pero no recaudado",
+        stage: "Determinado",
+        stageIndex: 1,
+        narrative: "Una entidad emitió una liquidación por S/ 80,000 a favor de un usuario por un servicio especializado ya prestado. La liquidación identifica el concepto, el monto, el obligado al pago y la fecha máxima de cancelación. Sin embargo, el usuario todavía no ha realizado el depósito.",
+        question: "¿Puede certificarse presupuesto considerando que el ingreso ya fue determinado?",
+        hint: "Diferencie derecho de cobro e ingreso efectivamente captado.",
+        correctOption: "noNecesariamente",
+        options: [
+          { id: "si", label: "Sí, puede certificarse el presupuesto." },
+          { id: "noNecesariamente", label: "No necesariamente; debe verificarse percepción efectiva." },
+          { id: "soloPercibido", label: "Puede certificarse solo si el ingreso fue percibido e incorporado/habilitado presupuestalmente." },
+          { id: "verificarRecaudacion", label: "Debe verificarse el registro de la recaudación." }
+        ],
+        feedback: {
+          ok: "Correcto. La determinación reconoce un derecho de cobro, pero no equivale a percepción o recaudación efectiva.",
+          bad: "La determinación identifica la obligación de pago del usuario, pero todavía no garantiza caja ni disponibilidad efectiva.",
+          stage: "El ingreso se encuentra determinado, pero no recaudado.",
+          consequence: "Certificar solo con base en el derecho de cobro puede generar riesgo de desfinanciamiento si el pago no se concreta.",
+          recommendation: "La Oficina de Presupuesto debe coordinar con Tesorería para verificar percepción, registro y clasificación del ingreso antes de certificar."
+        }
+      },
+      {
+        title: "Caso 3: Ingreso percibido/recaudado",
+        stage: "Percibido/Recaudado",
+        stageIndex: 2,
+        narrative: "Una entidad recibió efectivamente S/ 150,000 por concepto de prestación de servicios. El depósito se encuentra registrado por Tesorería, conciliado con el área contable y clasificado en la fuente de financiamiento correspondiente. La Oficina de Presupuesto verifica que el ingreso puede financiar una actividad priorizada y que, de ser un mayor ingreso, se ha realizado la incorporación presupuestaria conforme a la normativa aplicable.",
+        question: "¿Puede certificarse presupuesto con cargo a estos recursos?",
+        hint: "La recaudación efectiva habilita el análisis presupuestario, pero no elimina las validaciones de fuente, crédito y habilitación.",
+        correctOption: "siCondicionado",
+        options: [
+          { id: "si", label: "Sí, puede certificarse sin ninguna otra validación." },
+          { id: "no", label: "No, aún no corresponde certificar." },
+          { id: "siCondicionado", label: "Sí, si existe crédito presupuestario disponible, fuente correcta e incorporación/habilitación cuando corresponda." },
+          { id: "esperarDeterminacion", label: "Debe esperarse la determinación del ingreso." }
+        ],
+        feedback: {
+          ok: "Correcto. La percepción o recaudación acredita el ingreso efectivo, pero la certificación exige validaciones presupuestarias adicionales.",
+          bad: "Revise la condición habilitante. El ingreso fue recaudado, pero la certificación debe respetar crédito disponible, fuente de financiamiento e incorporación o habilitación cuando corresponda.",
+          stage: "El ingreso se encuentra percibido o recaudado.",
+          consequence: "Puede sustentar certificación solo si el recurso está correctamente registrado y existe crédito presupuestario disponible.",
+          recommendation: "La Oficina de Presupuesto debe verificar clasificación, fuente, incorporación presupuestaria si corresponde y consistencia con la programación de gasto."
+        }
+      }
+    ];
+
+    let currentCase = 0;
+    let score = 0;
+    let answered = false;
+
+    function startSimulator() {
+      currentCase = 0;
+      score = 0;
+      answered = false;
+      showScreen("caseScreen");
+      renderCase();
+    }
+
+    function showScreen(screenId) {
+      ["startScreen", "caseScreen", "resultScreen"].forEach(id => {
+        document.getElementById(id).classList.toggle("active", id === screenId);
+      });
+    }
+
+    function renderCase() {
+      const item = cases[currentCase];
+      answered = false;
+      document.getElementById("caseBadge").textContent = "Caso " + (currentCase + 1) + " de " + cases.length;
+      document.getElementById("stageBadge").textContent = "Ingreso " + item.stage.toLowerCase();
+      document.getElementById("scoreText").textContent = score;
+      document.getElementById("generalProgress").style.width = ((currentCase) / cases.length * 100) + "%";
+      document.getElementById("caseTitle").textContent = item.title;
+      document.getElementById("caseNarrative").innerHTML = emphasizeAmounts(item.narrative);
+      document.getElementById("caseQuestion").textContent = item.question;
+      document.getElementById("caseHint").textContent = item.hint;
+      document.getElementById("nextButton").disabled = true;
+      document.getElementById("feedbackBox").className = "feedback";
+      document.getElementById("feedbackBox").innerHTML = "";
+      renderStageLine(item.stageIndex, "initial");
+      renderOptions(item);
+    }
+
+    function emphasizeAmounts(text) {
+      return text.replace(/S\/\s?[\d,]+/g, match => '<span class="amount">' + match + '</span>');
+    }
+
+    function renderStageLine(stageIndex, mode) {
+      const ids = ["stepEstimate", "stepDetermine", "stepCollect"];
+      ids.forEach((id, index) => {
+        const step = document.getElementById(id);
+        step.className = "stage-step";
+        if (mode === "incorrect" && index === stageIndex) {
+          step.classList.add("red", "active");
+          return;
+        }
+        if (index < stageIndex) {
+          step.classList.add("yellow");
+          return;
+        }
+        if (index === stageIndex) {
+          step.classList.add(stageIndex === 2 && mode === "correct" ? "green" : "yellow", "active");
+          return;
+        }
+        step.classList.add("gray");
+      });
+    }
+
+    function renderOptions(item) {
+      const box = document.getElementById("optionsBox");
+      box.innerHTML = "";
+      item.options.forEach(option => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "option-button";
+        button.textContent = option.label;
+        button.onclick = () => selectAnswer(option.id, button);
+        box.appendChild(button);
+      });
+    }
+
+    function selectAnswer(optionId, button) {
+      if (answered) return;
+      answered = true;
+      const item = cases[currentCase];
+      const isCorrect = optionId === item.correctOption || optionId === "soloPercibido" && item.correctOption === "noNecesariamente";
+      const optionButtons = document.querySelectorAll(".option-button");
+      optionButtons.forEach(btn => {
+        btn.disabled = true;
+        if (btn === button) btn.classList.add(isCorrect ? "correct" : "incorrect");
+      });
+
+      if (isCorrect) {
+        score += currentCase === 2 ? 34 : 33;
+        renderStageLine(item.stageIndex, "correct");
+      } else {
+        renderStageLine(item.stageIndex, "incorrect");
+      }
+
+      document.getElementById("scoreText").textContent = score;
+      showFeedback(item, isCorrect);
+      document.getElementById("nextButton").disabled = false;
+    }
+
+    function showFeedback(item, isCorrect) {
+      const box = document.getElementById("feedbackBox");
+      box.className = "feedback show " + (isCorrect ? "ok" : "bad");
+      box.innerHTML = `
+        <strong>${isCorrect ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
+        <p>${isCorrect ? item.feedback.ok : item.feedback.bad}</p>
+        <div class="feedback-grid">
+          <div class="feedback-item"><strong>Etapa del ingreso</strong>${item.feedback.stage}</div>
+          <div class="feedback-item"><strong>Consecuencia presupuestaria</strong>${item.feedback.consequence}</div>
+          <div class="feedback-item"><strong>Recomendación para Presupuesto</strong>${item.feedback.recommendation}</div>
+          <div class="feedback-item"><strong>Frase clave</strong>${keyPhrase(item.stageIndex)}</div>
+        </div>
+      `;
+    }
+
+    function keyPhrase(stageIndex) {
+      if (stageIndex === 0) return "La estimación proyecta, pero no acredita disponibilidad efectiva.";
+      if (stageIndex === 1) return "La determinación identifica el derecho de cobro, pero no garantiza caja.";
+      return "La percepción o recaudación acredita el ingreso efectivo.";
+    }
+
+    function nextCase() {
+      if (!answered) return;
+      currentCase += 1;
+      if (currentCase >= cases.length) {
+        showResults();
+        return;
+      }
+      renderCase();
+    }
+
+    function showResults() {
+      document.getElementById("generalProgress").style.width = "100%";
+      document.getElementById("finalScore").textContent = score;
+      let message = "Buen avance. Repase la diferencia entre ingreso esperado, derecho de cobro e ingreso efectivamente percibido.";
+      if (score >= 90) {
+        message = "Excelente. El criterio aplicado distingue disponibilidad real, fuente de financiamiento y condiciones para certificar.";
+      } else if (score >= 65) {
+        message = "Resultado satisfactorio. Hay una comprensión razonable de las etapas, con oportunidades para reforzar las condiciones de certificación.";
+      }
+      document.getElementById("finalMessage").textContent = message;
+      showScreen("resultScreen");
+    }
+
+    function resetSimulator() {
+      currentCase = 0;
+      score = 0;
+      answered = false;
+      showScreen("startScreen");
+      document.getElementById("scoreText").textContent = "0";
+      document.getElementById("generalProgress").style.width = "0%";
+    }
+  </script>
+</body>
+</html>
