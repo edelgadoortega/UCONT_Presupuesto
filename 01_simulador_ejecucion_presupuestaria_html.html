@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Ejecución Presupuestaria</title>
+  <style>
+    :root {
+      --azul: #1d4ed8;
+      --azul-oscuro: #1e3a8a;
+      --celeste: #eff6ff;
+      --verde: #15803d;
+      --verde-suave: #dcfce7;
+      --rojo: #b91c1c;
+      --rojo-suave: #fee2e2;
+      --amarillo: #a16207;
+      --amarillo-suave: #fef3c7;
+      --gris: #475569;
+      --gris-claro: #f8fafc;
+      --borde: #dbe3ef;
+      --sombra: 0 12px 30px rgba(15, 23, 42, 0.12);
+      --radio: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #eef4ff, #f8fafc 45%, #f0fdf4);
+      color: #0f172a;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--azul-oscuro), var(--azul));
+      color: white;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.5rem);
+    }
+
+    header p {
+      margin: 10px auto 0;
+      max-width: 980px;
+      line-height: 1.55;
+      opacity: 0.95;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: var(--radio);
+      box-shadow: var(--sombra);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .col-8 { grid-column: span 8; }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+
+    @media (max-width: 900px) {
+      .col-8, .col-4, .col-6 { grid-column: span 12; }
+    }
+
+    h2, h3 {
+      margin-top: 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.86rem;
+      background: var(--celeste);
+      color: var(--azul-oscuro);
+      margin: 4px 6px 4px 0;
+    }
+
+    .case-box {
+      background: var(--gris-claro);
+      border: 1px dashed #cbd5e1;
+      padding: 16px;
+      border-radius: 16px;
+    }
+
+    .case-box table, .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .case-box td, .result-table th, .result-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+
+    .case-box td:first-child {
+      font-weight: 700;
+      color: var(--gris);
+      width: 42%;
+    }
+
+    .progress-wrap {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .progress-wrap { grid-template-columns: 1fr; }
+    }
+
+    .step {
+      border: 2px solid var(--borde);
+      border-radius: 16px;
+      padding: 14px;
+      background: white;
+      min-height: 120px;
+      transition: 0.2s ease;
+    }
+
+    .step.active {
+      border-color: var(--azul);
+      background: var(--celeste);
+      transform: translateY(-2px);
+    }
+
+    .step.done {
+      border-color: #86efac;
+      background: var(--verde-suave);
+    }
+
+    .step.blocked {
+      border-color: #fecaca;
+      background: var(--rojo-suave);
+    }
+
+    .step-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: var(--azul);
+      color: white;
+      font-weight: 800;
+    }
+
+    .small {
+      color: var(--gris);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: 700;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 1rem;
+      background: white;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .btn-primary { background: var(--azul); color: white; }
+    .btn-secondary { background: #e2e8f0; color: #0f172a; }
+    .btn-danger { background: var(--rojo); color: white; }
+    .btn-success { background: var(--verde); color: white; }
+
+    .feedback {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .feedback.ok {
+      display: block;
+      background: var(--verde-suave);
+      color: #14532d;
+      border: 1px solid #86efac;
+    }
+
+    .feedback.warn {
+      display: block;
+      background: var(--amarillo-suave);
+      color: #713f12;
+      border: 1px solid #fde68a;
+    }
+
+    .feedback.bad {
+      display: block;
+      background: var(--rojo-suave);
+      color: #7f1d1d;
+      border: 1px solid #fecaca;
+    }
+
+    .score-card {
+      background: linear-gradient(135deg, #ffffff, #eff6ff);
+      border-radius: var(--radio);
+      border: 1px solid var(--borde);
+      padding: 18px;
+    }
+
+    .score-number {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--azul-oscuro);
+      margin: 8px 0;
+    }
+
+    .checklist {
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 0;
+    }
+
+    .checklist li {
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .log {
+      max-height: 280px;
+      overflow: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 16px;
+      padding: 14px;
+      font-family: Consolas, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .event-card {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      color: #713f12;
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+
+    .hidden { display: none; }
+
+    .pill-status {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .pill-pending { background: #e2e8f0; color: #334155; }
+    .pill-ok { background: var(--verde-suave); color: #14532d; }
+    .pill-bad { background: var(--rojo-suave); color: #7f1d1d; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulador de Ejecución Presupuestaria</h1>
+    <p>
+      Actividad interactiva para practicar las fases de Certificación, Compromiso, Devengado y Pago.
+      El estudiante debe decidir si el expediente avanza, se observa o se corrige.
+    </p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>1. Caso de trabajo</h2>
+      <div class="grid">
+        <div class="col-8">
+          <div class="case-box">
+            <h3>Expediente N.° 001-2026: Servicio de mantenimiento de estaciones sísmicas</h3>
+            <p class="small">
+              El área técnica solicita contratar un servicio especializado para el mantenimiento preventivo de estaciones sísmicas.
+              El expediente debe pasar correctamente por las fases de ejecución del gasto.
+            </p>
+            <table>
+              <tr><td>Valor estimado</td><td>S/ <span id="valorEstimadoTxt">85,000</span></td></tr>
+              <tr><td>PIM disponible</td><td>S/ <span id="pimTxt">100,000</span></td></tr>
+              <tr><td>PCA disponible inicial</td><td>S/ <span id="pcaTxt">70,000</span></td></tr>
+              <tr><td>Fuente de financiamiento</td><td>Recursos Ordinarios</td></tr>
+              <tr><td>Meta presupuestal</td><td>Monitoreo geofísico nacional</td></tr>
+              <tr><td>Clasificador sugerido</td><td>Servicios de mantenimiento</td></tr>
+              <tr><td>Plazo</td><td>60 días calendario</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="score-card">
+            <h3>Puntaje del equipo</h3>
+            <div class="score-number"><span id="score">0</span>/100</div>
+            <p class="small" id="scoreMessage">Toma decisiones correctas y sustenta cada fase.</p>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="resetSimulator()">Reiniciar simulador</button>
+              <button class="btn-primary" onclick="drawEvent()">Tarjeta sorpresa</button>
+            </div>
+            <div id="eventBox" class="event-card hidden"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>2. Ruta del expediente</h2>
+      <div class="progress-wrap">
+        <div id="stepCert" class="step active">
+          <div class="step-title"><span>Certificación</span><span class="circle">1</span></div>
+          <p class="small">¿Existe crédito disponible, PCA y cadena correcta?</p>
+          <span id="statusCert" class="pill-status pill-pending">Pendiente</span>
+        </div>
+        <div id="stepComp" class="step">
+          <div class="step-title"><span>Compromiso</span><span class="circle">2</span></div>
+          <p class="small">¿La entidad asumió una obligación válida?</p>
+          <span id="statusComp" class="pill-status pill-pending">Pendiente</span>
+        </div>
+        <div id="stepDev" class="step">
+          <div class="step-title"><span>Devengado</span><span class="circle">3</span></div>
+          <p class="small">¿El servicio fue prestado y conforme?</p>
+          <span id="statusDev" class="pill-status pill-pending">Pendiente</span>
+        </div>
+        <div id="stepPago" class="step">
+          <div class="step-title"><span>Pago</span><span class="circle">4</span></div>
+          <p class="small">¿Existe devengado válido para cancelar?</p>
+          <span id="statusPago" class="pill-status pill-pending">Pendiente</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="col-8">
+        <section class="panel" id="decisionPanel">
+          <h2 id="phaseTitle">Fase 1: Certificación del crédito presupuestario</h2>
+          <p id="phaseIntro" class="small">
+            Revisa si corresponde emitir certificación por el valor estimado de S/ 85,000.
+          </p>
+
+          <div id="certForm">
+            <label>Decisión presupuestaria</label>
+            <select id="certDecision">
+              <option value="">Seleccione una decisión</option>
+              <option value="certificar85000">Emitir certificación por S/ 85,000</option>
+              <option value="observarPCA">Observar el expediente por PCA insuficiente</option>
+              <option value="certificar70000">Emitir certificación solo por S/ 70,000</option>
+            </select>
+            <label>Sustento breve</label>
+            <textarea id="certJustification" placeholder="Explique la razón de su decisión..."></textarea>
+            <div class="btn-row">
+              <button class="btn-primary" onclick="evaluateCertification()">Validar certificación</button>
+              <button class="btn-secondary" onclick="applyPcaUpdate()">Gestionar actualización de PCA a S/ 90,000</button>
+            </div>
+          </div>
+
+          <div id="compForm" class="hidden">
+            <label>Monto de la orden de servicio o contrato</label>
+            <select id="compAmount">
+              <option value="">Seleccione el monto</option>
+              <option value="82000">S/ 82,000</option>
+              <option value="85000">S/ 85,000</option>
+              <option value="90000">S/ 90,000</option>
+            </select>
+            <label>Cadena de gasto</label>
+            <select id="compChain">
+              <option value="">Seleccione la cadena</option>
+              <option value="misma">La misma cadena usada en la certificación</option>
+              <option value="otra">Otra cadena de gasto</option>
+            </select>
+            <label>Documento fuente</label>
+            <select id="compDocument">
+              <option value="">Seleccione documento</option>
+              <option value="orden">Orden de servicio</option>
+              <option value="correo">Correo del área usuaria</option>
+              <option value="cotizacion">Cotización del proveedor</option>
+            </select>
+            <div class="btn-row">
+              <button class="btn-primary" onclick="evaluateCommitment()">Validar compromiso</button>
+            </div>
+          </div>
+
+          <div id="devForm" class="hidden">
+            <label>Situación del servicio</label>
+            <select id="devSituation">
+              <option value="">Seleccione situación</option>
+              <option value="conformeTotal">Servicio conforme por S/ 82,000</option>
+              <option value="conformeParcial">Servicio parcial conforme por S/ 50,000</option>
+              <option value="sinConformidad">No existe conformidad del área usuaria</option>
+            </select>
+            <label>Documento de conformidad</label>
+            <select id="devDocument">
+              <option value="">Seleccione documento</option>
+              <option value="acta">Acta o informe de conformidad</option>
+              <option value="factura">Solo factura del proveedor</option>
+              <option value="ninguno">Sin documento</option>
+            </select>
+            <div class="btn-row">
+              <button class="btn-primary" onclick="evaluateAccrual()">Validar devengado</button>
+            </div>
+          </div>
+
+          <div id="payForm" class="hidden">
+            <label>Decisión de Tesorería</label>
+            <select id="payDecision">
+              <option value="">Seleccione decisión</option>
+              <option value="pagarDevengado">Pagar el monto devengado</option>
+              <option value="pagarContrato">Pagar el monto total del contrato aunque el devengado sea menor</option>
+              <option value="pagarSinDevengado">Pagar por urgencia sin revisar devengado</option>
+            </select>
+            <label>Comprobante y expediente</label>
+            <select id="paySupport">
+              <option value="">Seleccione validación</option>
+              <option value="completo">Expediente completo y comprobante válido</option>
+              <option value="incompleto">Expediente incompleto</option>
+            </select>
+            <div class="btn-row">
+              <button class="btn-success" onclick="evaluatePayment()">Validar pago</button>
+            </div>
+          </div>
+
+          <div id="feedback" class="feedback"></div>
+        </section>
+      </div>
+
+      <div class="col-4">
+        <section class="panel">
+          <h2>3. Controles de aprendizaje</h2>
+          <ul class="checklist">
+            <li id="learn1">⬜ Distingue PIM de PCA.</li>
+            <li id="learn2">⬜ Reconoce que no se compromete sin certificación válida.</li>
+            <li id="learn3">⬜ Verifica que el compromiso respete monto y cadena.</li>
+            <li id="learn4">⬜ Exige conformidad para devengar.</li>
+            <li id="learn5">⬜ No permite pago sin devengado.</li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h2>4. Bitácora del expediente</h2>
+          <div id="log" class="log">Sistema iniciado. Revise el caso y tome una decisión en Certificación.</div>
+        </section>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>5. Resumen del expediente</h2>
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th>Fase</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Observación docente</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Certificación</td><td id="resCertAmount">-</td><td id="resCertStatus">Pendiente</td><td id="resCertObs">Aún no evaluado.</td></tr>
+          <tr><td>Compromiso</td><td id="resCompAmount">-</td><td id="resCompStatus">Pendiente</td><td id="resCompObs">Aún no evaluado.</td></tr>
+          <tr><td>Devengado</td><td id="resDevAmount">-</td><td id="resDevStatus">Pendiente</td><td id="resDevObs">Aún no evaluado.</td></tr>
+          <tr><td>Pago</td><td id="resPayAmount">-</td><td id="resPayStatus">Pendiente</td><td id="resPayObs">Aún no evaluado.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      pim: 100000,
+      pca: 70000,
+      estimated: 85000,
+      certified: 0,
+      committed: 0,
+      accrued: 0,
+      paid: 0,
+      score: 0,
+      pcaUpdated: false,
+      certDone: false,
+      compDone: false,
+      devDone: false,
+      payDone: false
+    };
+
+    const events = [
+      {
+        title: "PCA insuficiente",
+        text: "La entidad tiene PIM suficiente, pero la PCA disponible no alcanza para certificar el valor estimado. Debe observarse o gestionarse la actualización correspondiente."
+      },
+      {
+        title: "Clasificador incorrecto",
+        text: "El requerimiento fue cargado por error como adquisición de bienes, cuando corresponde a servicios de mantenimiento. Debe corregirse antes de avanzar."
+      },
+      {
+        title: "Conformidad incompleta",
+        text: "El área usuaria solo adjuntó un correo informal. Para devengar se requiere conformidad sustentada de la prestación."
+      },
+      {
+        title: "Factura mayor al compromiso",
+        text: "El proveedor presentó factura por monto mayor al compromiso. Solo puede reconocerse hasta el monto válidamente comprometido y conforme."
+      },
+      {
+        title: "Solicitud de pago urgente",
+        text: "Administración solicita pagar por urgencia. Tesorería no debe pagar si no existe devengado válido."
+      }
+    ];
+
+    function money(value) {
+      if (!value || value === 0) return "-";
+      return "S/ " + Number(value).toLocaleString("es-PE");
+    }
+
+    function addScore(points) {
+      state.score = Math.min(100, state.score + points);
+      document.getElementById("score").textContent = state.score;
+      if (state.score >= 80) {
+        document.getElementById("scoreMessage").textContent = "Excelente. El equipo demuestra control de la ruta del gasto.";
+      } else if (state.score >= 50) {
+        document.getElementById("scoreMessage").textContent = "Buen avance. Revise las observaciones para mejorar la trazabilidad.";
+      } else {
+        document.getElementById("scoreMessage").textContent = "Toma decisiones correctas y sustenta cada fase.";
+      }
+    }
+
+    function log(message) {
+      const box = document.getElementById("log");
+      const time = new Date().toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+      box.innerHTML += `<br>[${time}] ${message}`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function setFeedback(type, text) {
+      const fb = document.getElementById("feedback");
+      fb.className = "feedback " + type;
+      fb.innerHTML = text;
+    }
+
+    function setStep(stepId, statusId, status, label) {
+      const step = document.getElementById(stepId);
+      const pill = document.getElementById(statusId);
+      step.classList.remove("active", "done", "blocked");
+      pill.classList.remove("pill-pending", "pill-ok", "pill-bad");
+      if (status === "done") {
+        step.classList.add("done");
+        pill.classList.add("pill-ok");
+      } else if (status === "blocked") {
+        step.classList.add("blocked");
+        pill.classList.add("pill-bad");
+      } else {
+        step.classList.add("active");
+        pill.classList.add("pill-pending");
+      }
+      pill.textContent = label;
+    }
+
+    function showPhase(phase) {
+      const forms = ["certForm", "compForm", "devForm", "payForm"];
+      forms.forEach(id => document.getElementById(id).classList.add("hidden"));
+      document.getElementById("feedback").className = "feedback";
+
+      if (phase === "cert") {
+        document.getElementById("certForm").classList.remove("hidden");
+        document.getElementById("phaseTitle").textContent = "Fase 1: Certificación del crédito presupuestario";
+        document.getElementById("phaseIntro").textContent = "Revisa si corresponde emitir certificación por el valor estimado de S/ 85,000.";
+      }
+      if (phase === "comp") {
+        document.getElementById("compForm").classList.remove("hidden");
+        document.getElementById("phaseTitle").textContent = "Fase 2: Compromiso";
+        document.getElementById("phaseIntro").textContent = "Registra la obligación asumida por la entidad, respetando el monto certificado y la cadena de gasto.";
+      }
+      if (phase === "dev") {
+        document.getElementById("devForm").classList.remove("hidden");
+        document.getElementById("phaseTitle").textContent = "Fase 3: Devengado";
+        document.getElementById("phaseIntro").textContent = "Reconoce la obligación solo si existe prestación efectiva y conformidad documentada.";
+      }
+      if (phase === "pay") {
+        document.getElementById("payForm").classList.remove("hidden");
+        document.getElementById("phaseTitle").textContent = "Fase 4: Pago";
+        document.getElementById("phaseIntro").textContent = "Cancela la obligación únicamente por el monto devengado y con expediente completo.";
+      }
+    }
+
+    function updateLearning(id) {
+      const el = document.getElementById(id);
+      el.textContent = "✅ " + el.textContent.replace("⬜ ", "").replace("✅ ", "");
+      el.style.background = "#dcfce7";
+      el.style.borderColor = "#86efac";
+    }
+
+    function applyPcaUpdate() {
+      state.pca = 90000;
+      state.pcaUpdated = true;
+      document.getElementById("pcaTxt").textContent = "90,000";
+      setFeedback("ok", "La PCA fue actualizada a S/ 90,000. Ahora el expediente puede ser evaluado para certificación por S/ 85,000.");
+      log("Se gestionó actualización de PCA a S/ 90,000.");
+      addScore(10);
+      updateLearning("learn1");
+    }
+
+    function evaluateCertification() {
+      const decision = document.getElementById("certDecision").value;
+      const justification = document.getElementById("certJustification").value.trim();
+
+      if (!decision) {
+        setFeedback("warn", "Seleccione una decisión antes de validar.");
+        return;
+      }
+
+      if (decision === "observarPCA" && !state.pcaUpdated) {
+        setFeedback("ok", "Correcto. Aunque existe PIM suficiente, la PCA disponible inicial es solo S/ 70,000. No procede certificar S/ 85,000 hasta gestionar la actualización correspondiente.");
+        document.getElementById("resCertAmount").textContent = "S/ 0";
+        document.getElementById("resCertStatus").textContent = "Observado correctamente";
+        document.getElementById("resCertObs").textContent = "El estudiante distingue crédito presupuestario de PCA disponible.";
+        setStep("stepCert", "statusCert", "blocked", "Observado");
+        log("Certificación observada correctamente por PCA insuficiente.");
+        addScore(15);
+        updateLearning("learn1");
+        return;
+      }
+
+      if (decision === "certificar85000" && state.pcaUpdated) {
+        state.certified = 85000;
+        state.certDone = true;
+        setFeedback("ok", "Correcto. Con PCA actualizada a S/ 90,000, procede certificar S/ 85,000, siempre que la cadena de gasto sea correcta y el crédito esté libre de afectación." + (justification ? "<br><strong>Sustento:</strong> " + justification : ""));
+        document.getElementById("resCertAmount").textContent = money(state.certified);
+        document.getElementById("resCertStatus").textContent = "Aprobado";
+        document.getElementById("resCertObs").textContent = "La certificación reserva crédito para iniciar el gasto.";
+        setStep("stepCert", "statusCert", "done", "Aprobado");
+        setStep("stepComp", "statusComp", "active", "En evaluación");
+        log("Certificación aprobada por S/ 85,000.");
+        addScore(20);
+        updateLearning("learn1");
+        showPhase("comp");
+        return;
+      }
+
+      if (decision === "certificar70000") {
+        setFeedback("warn", "Parcialmente válido solo si el requerimiento se reformula por S/ 70,000. Para el valor estimado original de S/ 85,000, la certificación parcial no permite comprometer la totalidad del servicio.");
+        document.getElementById("resCertAmount").textContent = "S/ 70,000";
+        document.getElementById("resCertStatus").textContent = "Parcial / requiere ajuste";
+        document.getElementById("resCertObs").textContent = "Debe existir coherencia entre requerimiento, certificación y posterior compromiso.";
+        log("Se intentó certificación parcial. Requiere reformulación del requerimiento.");
+        addScore(5);
+        return;
+      }
+
+      setFeedback("bad", "No procede. Si la PCA no fue actualizada, no puede certificarse S/ 85,000. Si ya fue actualizada, seleccione la certificación por S/ 85,000.");
+      document.getElementById("resCertStatus").textContent = "Incorrecto";
+      document.getElementById("resCertObs").textContent = "La decisión no respeta la disponibilidad de PCA.";
+      setStep("stepCert", "statusCert", "blocked", "Incorrecto");
+      log("Decisión incorrecta en certificación.");
+    }
+
+    function evaluateCommitment() {
+      if (!state.certDone) {
+        setFeedback("bad", "No se puede comprometer. Primero debe existir certificación válida.");
+        log("Intento de compromiso sin certificación válida.");
+        return;
+      }
+
+      const amount = Number(document.getElementById("compAmount").value);
+      const chain = document.getElementById("compChain").value;
+      const doc = document.getElementById("compDocument").value;
+
+      if (!amount || !chain || !doc) {
+        setFeedback("warn", "Complete monto, cadena de gasto y documento fuente.");
+        return;
+      }
+
+      if (amount > state.certified) {
+        setFeedback("bad", "No procede. El compromiso no puede exceder el monto certificado de " + money(state.certified) + ".");
+        document.getElementById("resCompAmount").textContent = money(amount);
+        document.getElementById("resCompStatus").textContent = "Observado";
+        document.getElementById("resCompObs").textContent = "El compromiso excede el monto certificado.";
+        setStep("stepComp", "statusComp", "blocked", "Observado");
+        log("Compromiso observado por exceder certificación.");
+        return;
+      }
+
+      if (chain !== "misma") {
+        setFeedback("bad", "No procede. El compromiso debe registrarse en la misma cadena de gasto de la certificación.");
+        document.getElementById("resCompStatus").textContent = "Observado";
+        document.getElementById("resCompObs").textContent = "La cadena de gasto no coincide con la certificación.";
+        setStep("stepComp", "statusComp", "blocked", "Observado");
+        log("Compromiso observado por cadena de gasto distinta.");
+        return;
+      }
+
+      if (doc !== "orden") {
+        setFeedback("bad", "No procede. El compromiso requiere un documento que formalice la obligación, como una orden de servicio o contrato. Una cotización o correo no formaliza por sí solo la obligación.");
+        document.getElementById("resCompStatus").textContent = "Observado";
+        document.getElementById("resCompObs").textContent = "Documento fuente insuficiente.";
+        setStep("stepComp", "statusComp", "blocked", "Observado");
+        log("Compromiso observado por documento fuente insuficiente.");
+        return;
+      }
+
+      state.committed = amount;
+      state.compDone = true;
+      setFeedback("ok", "Correcto. Se registró el compromiso por " + money(amount) + ", dentro del monto certificado y en la misma cadena de gasto.");
+      document.getElementById("resCompAmount").textContent = money(amount);
+      document.getElementById("resCompStatus").textContent = "Aprobado";
+      document.getElementById("resCompObs").textContent = "El compromiso formaliza la obligación de la entidad.";
+      setStep("stepComp", "statusComp", "done", "Aprobado");
+      setStep("stepDev", "statusDev", "active", "En evaluación");
+      log("Compromiso aprobado por " + money(amount) + ".");
+      addScore(20);
+      updateLearning("learn2");
+      updateLearning("learn3");
+      showPhase("dev");
+    }
+
+    function evaluateAccrual() {
+      if (!state.compDone) {
+        setFeedback("bad", "No se puede devengar. Primero debe existir compromiso válido.");
+        log("Intento de devengado sin compromiso válido.");
+        return;
+      }
+
+      const situation = document.getElementById("devSituation").value;
+      const doc = document.getElementById("devDocument").value;
+
+      if (!situation || !doc) {
+        setFeedback("warn", "Complete la situación del servicio y el documento de conformidad.");
+        return;
+      }
+
+      if (situation === "sinConformidad" || doc !== "acta") {
+        setFeedback("bad", "No procede devengar. El devengado exige prestación efectiva y conformidad sustentada del área usuaria.");
+        document.getElementById("resDevStatus").textContent = "Observado";
+        document.getElementById("resDevObs").textContent = "Falta conformidad válida para reconocer la obligación.";
+        setStep("stepDev", "statusDev", "blocked", "Observado");
+        log("Devengado observado por falta de conformidad válida.");
+        updateLearning("learn4");
+        addScore(10);
+        return;
+      }
+
+      let amount = 0;
+      if (situation === "conformeTotal") amount = state.committed;
+      if (situation === "conformeParcial") amount = 50000;
+
+      if (amount > state.committed) {
+        setFeedback("bad", "No procede. El devengado no puede superar el compromiso.");
+        return;
+      }
+
+      state.accrued = amount;
+      state.devDone = true;
+      setFeedback("ok", "Correcto. Se reconoce el devengado por " + money(amount) + ", sustentado en la conformidad del área usuaria.");
+      document.getElementById("resDevAmount").textContent = money(amount);
+      document.getElementById("resDevStatus").textContent = "Aprobado";
+      document.getElementById("resDevObs").textContent = amount < state.committed ? "Devengado parcial por prestación parcial conforme." : "Devengado total por prestación conforme.";
+      setStep("stepDev", "statusDev", "done", "Aprobado");
+      setStep("stepPago", "statusPago", "active", "En evaluación");
+      log("Devengado aprobado por " + money(amount) + ".");
+      addScore(25);
+      updateLearning("learn4");
+      showPhase("pay");
+    }
+
+    function evaluatePayment() {
+      const decision = document.getElementById("payDecision").value;
+      const support = document.getElementById("paySupport").value;
+
+      if (!decision || !support) {
+        setFeedback("warn", "Complete la decisión de Tesorería y la validación del expediente.");
+        return;
+      }
+
+      if (!state.devDone || decision === "pagarSinDevengado") {
+        setFeedback("bad", "No procede. Está prohibido pagar obligaciones que no hayan sido previamente devengadas.");
+        document.getElementById("resPayStatus").textContent = "Observado";
+        document.getElementById("resPayObs").textContent = "No existe devengado válido o se pretende omitir la fase previa.";
+        setStep("stepPago", "statusPago", "blocked", "Observado");
+        log("Pago observado por inexistencia u omisión de devengado.");
+        updateLearning("learn5");
+        return;
+      }
+
+      if (decision === "pagarContrato" && state.accrued < state.committed) {
+        setFeedback("bad", "No procede. Si el devengado es parcial, solo puede pagarse el monto devengado: " + money(state.accrued) + ".");
+        document.getElementById("resPayStatus").textContent = "Observado";
+        document.getElementById("resPayObs").textContent = "El pago pretendido excede el devengado.";
+        setStep("stepPago", "statusPago", "blocked", "Observado");
+        log("Pago observado por exceder el devengado.");
+        return;
+      }
+
+      if (support !== "completo") {
+        setFeedback("bad", "No procede. Tesorería debe verificar expediente completo y comprobante válido antes del pago.");
+        document.getElementById("resPayStatus").textContent = "Observado";
+        document.getElementById("resPayObs").textContent = "Expediente incompleto.";
+        setStep("stepPago", "statusPago", "blocked", "Observado");
+        log("Pago observado por expediente incompleto.");
+        return;
+      }
+
+      if (decision === "pagarDevengado") {
+        state.paid = state.accrued;
+        state.payDone = true;
+        setFeedback("ok", "Correcto. Se autoriza el pago por " + money(state.paid) + ", equivalente al monto válidamente devengado. La obligación queda extinguida total o parcialmente." );
+        document.getElementById("resPayAmount").textContent = money(state.paid);
+        document.getElementById("resPayStatus").textContent = "Aprobado";
+        document.getElementById("resPayObs").textContent = "El pago respeta el devengado y cuenta con expediente completo.";
+        setStep("stepPago", "statusPago", "done", "Aprobado");
+        log("Pago aprobado por " + money(state.paid) + ". Expediente culminado.");
+        addScore(25);
+        updateLearning("learn5");
+      } else {
+        setFeedback("bad", "Revise la decisión. El pago debe corresponder al monto devengado y con expediente completo.");
+      }
+    }
+
+    function drawEvent() {
+      const event = events[Math.floor(Math.random() * events.length)];
+      const box = document.getElementById("eventBox");
+      box.classList.remove("hidden");
+      box.innerHTML = `<strong>${event.title}</strong><br>${event.text}`;
+      log("Tarjeta sorpresa: " + event.title + ".");
+    }
+
+    function resetSimulator() {
+      state.pim = 100000;
+      state.pca = 70000;
+      state.estimated = 85000;
+      state.certified = 0;
+      state.committed = 0;
+      state.accrued = 0;
+      state.paid = 0;
+      state.score = 0;
+      state.pcaUpdated = false;
+      state.certDone = false;
+      state.compDone = false;
+      state.devDone = false;
+      state.payDone = false;
+
+      document.getElementById("pcaTxt").textContent = "70,000";
+      document.getElementById("score").textContent = "0";
+      document.getElementById("scoreMessage").textContent = "Toma decisiones correctas y sustenta cada fase.";
+      document.getElementById("eventBox").classList.add("hidden");
+      document.getElementById("log").innerHTML = "Sistema iniciado. Revise el caso y tome una decisión en Certificación.";
+      document.getElementById("feedback").className = "feedback";
+
+      ["certDecision", "certJustification", "compAmount", "compChain", "compDocument", "devSituation", "devDocument", "payDecision", "paySupport"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+
+      const rows = [
+        ["resCertAmount", "-"], ["resCertStatus", "Pendiente"], ["resCertObs", "Aún no evaluado."],
+        ["resCompAmount", "-"], ["resCompStatus", "Pendiente"], ["resCompObs", "Aún no evaluado."],
+        ["resDevAmount", "-"], ["resDevStatus", "Pendiente"], ["resDevObs", "Aún no evaluado."],
+        ["resPayAmount", "-"], ["resPayStatus", "Pendiente"], ["resPayObs", "Aún no evaluado."]
+      ];
+      rows.forEach(([id, text]) => document.getElementById(id).textContent = text);
+
+      setStep("stepCert", "statusCert", "active", "Pendiente");
+      [
+        ["stepComp", "statusComp"],
+        ["stepDev", "statusDev"],
+        ["stepPago", "statusPago"]
+      ].forEach(([stepId, statusId]) => {
+        const step = document.getElementById(stepId);
+        const pill = document.getElementById(statusId);
+        step.className = "step";
+        pill.className = "pill-status pill-pending";
+        pill.textContent = "Pendiente";
+      });
+
+      ["learn1", "learn2", "learn3", "learn4", "learn5"].forEach((id, index) => {
+        const texts = [
+          "⬜ Distingue PIM de PCA.",
+          "⬜ Reconoce que no se compromete sin certificación válida.",
+          "⬜ Verifica que el compromiso respete monto y cadena.",
+          "⬜ Exige conformidad para devengar.",
+          "⬜ No permite pago sin devengado."
+        ];
+        const el = document.getElementById(id);
+        el.textContent = texts[index];
+        el.style.background = "#f8fafc";
+        el.style.borderColor = "#e2e8f0";
+      });
+
+      showPhase("cert");
+    }
+  </script>
+</body>
+</html>
